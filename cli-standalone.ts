@@ -440,8 +440,36 @@ LOG_LEVEL=info
     // Download and run the bot directly from GitHub (standalone version)
     const botUrl = "https://raw.githubusercontent.com/azumag/ccc/main/src/bot-standalone.ts";
     try {
-      const cmd = new Deno.Command("deno", {
-        args: ["run", "--allow-all", botUrl],
+      // Try to find deno executable
+      let denoCmd = "deno";
+      try {
+        // Check if deno is in PATH
+        const testCmd = new Deno.Command("which", { args: ["deno"] });
+        const testResult = await testCmd.output();
+        if (!testResult.success) {
+          // Try common deno locations
+          const possiblePaths = [
+            `${Deno.env.get("HOME")}/.deno/bin/deno`,
+            "/usr/local/bin/deno",
+            "/opt/homebrew/bin/deno"
+          ];
+          
+          for (const path of possiblePaths) {
+            try {
+              await Deno.stat(path);
+              denoCmd = path;
+              break;
+            } catch {
+              // Continue to next path
+            }
+          }
+        }
+      } catch {
+        // Use default if detection fails
+      }
+
+      const cmd = new Deno.Command(denoCmd, {
+        args: ["run", "--allow-all", "--reload", botUrl],
         cwd: projectPath,
       });
 
