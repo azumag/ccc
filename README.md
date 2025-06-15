@@ -65,17 +65,34 @@ LOG_LEVEL=info
    - ✅ Message Content Intent
 5. サーバーに招待
 
-### 5. 起動
+### 5. CLIツールインストール（推奨）
 
 ```bash
-# 基本起動
-deno task start
+# CLIツールをグローバルインストール
+deno install --global --allow-all -n claude-discord-bot ./cli.ts
 
-# チャネル名指定
-deno run --allow-all src/bot.ts --channel dev-claude
+# PATHに追加（永続的）
+echo 'export PATH="/Users/$USER/.deno/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# または一時的に設定
+export PATH="$HOME/.deno/bin:$PATH"
+```
+
+### 6. 起動
+
+```bash
+# CLIツール使用（推奨）
+claude-discord-bot start
+
+# チャネル指定
+claude-discord-bot start --channel dev-claude
 
 # デバッグモード
-deno run --allow-all src/bot.ts --channel claude --log-level debug
+claude-discord-bot start --log-level debug
+
+# または直接実行
+deno task start
 ```
 
 ## 💡 使用方法
@@ -107,7 +124,26 @@ const MyComponent = () => {
 export default MyComponent;
 ```
 
-### 特殊コマンド
+### CLIコマンド
+
+```bash
+# 初期設定（対話式）
+claude-discord-bot init
+
+# Bot起動
+claude-discord-bot start
+
+# ステータス確認
+claude-discord-bot status
+
+# Bot停止
+claude-discord-bot stop
+
+# ヘルプ表示
+claude-discord-bot --help
+```
+
+### Discord特殊コマンド
 
 | コマンド | 説明 |
 |---------|------|
@@ -265,7 +301,19 @@ Discord Developer Portal で以下を有効化:
 - `GUILD_ID`が正確か確認
 - Bot権限でサーバーが見えるか確認
 
-**5. Enterキーが送信されない問題**
+**5. "deno: not found"エラー（CLI使用時）**
+
+PATHが設定されていない場合:
+```bash
+# 永続的に設定
+echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# 一時的に設定
+export PATH="$HOME/.deno/bin:$PATH"
+```
+
+**6. Enterキーが送信されない問題**
 
 - ログレベルを`debug`に設定して詳細確認
 - tmuxセッションを直接確認
