@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+*.md
+
+# Environment
+.env
+.env.local
+.env.example
+
+# Logs
+logs/
+*.log
+
+# Dependencies
+node_modules/
+
+# Deno
+.deno/
+
+# Testing
+coverage/
+test-project/
+
+# Temporary files
+*.tmp
+*.temp
+/tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+project/
+templates/
+CLI-README.md
+test-non-interactive.ts
+
+# Claude settings (should not be in container)
+.claude/

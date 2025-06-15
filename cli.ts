@@ -7,8 +7,8 @@
 import { parseArgs } from "jsr:@std/cli/parse-args";
 import { load } from "jsr:@std/dotenv";
 import { ensureDir, exists } from "jsr:@std/fs";
-import { join, dirname } from "jsr:@std/path";
-import { Input, Select, Confirm } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
+import { dirname, join } from "jsr:@std/path";
+import { Confirm, Input, Select } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 
 const VERSION = "1.0.0";
@@ -104,7 +104,7 @@ ${colors.yellow("EXAMPLES:")}
     console.log(colors.cyan("\n🤖 Claude Discord Bot セットアップ\n"));
 
     const projectPath = args.project || Deno.cwd();
-    
+
     // Project detection
     const projectInfo = await this.detectProject(projectPath);
     console.log(`📁 プロジェクト: ${colors.green(projectInfo.name)}`);
@@ -134,8 +134,8 @@ ${colors.yellow("EXAMPLES:")}
     let projectInfo = {
       name: "unknown-project",
       language: "unknown",
-      framework: null,
-      packageManager: null,
+      framework: null as string | null,
+      packageManager: null as string | null,
     };
 
     // Node.js/npm project
@@ -151,8 +151,7 @@ ${colors.yellow("EXAMPLES:")}
       } catch {
         // Ignore parsing errors
       }
-    }
-    // Deno project
+    } // Deno project
     else if (await exists(denoJsonPath)) {
       try {
         const denoJson = JSON.parse(await Deno.readTextFile(denoJsonPath));
@@ -165,8 +164,7 @@ ${colors.yellow("EXAMPLES:")}
       } catch {
         // Ignore parsing errors
       }
-    }
-    // Rust project
+    } // Rust project
     else if (await exists(cargoTomlPath)) {
       projectInfo = {
         name: "rust-project",
@@ -174,8 +172,7 @@ ${colors.yellow("EXAMPLES:")}
         framework: null,
         packageManager: "cargo",
       };
-    }
-    // Python project
+    } // Python project
     else if (await exists(requirementsPath)) {
       projectInfo = {
         name: "python-project",
@@ -190,7 +187,7 @@ ${colors.yellow("EXAMPLES:")}
 
   private detectJSFramework(packageJson: any): string | null {
     const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
-    
+
     if (deps.react) return "React";
     if (deps.vue) return "Vue";
     if (deps.angular) return "Angular";
@@ -198,7 +195,7 @@ ${colors.yellow("EXAMPLES:")}
     if (deps.nuxt) return "Nuxt";
     if (deps.express) return "Express";
     if (deps.fastify) return "Fastify";
-    
+
     return null;
   }
 
@@ -245,7 +242,7 @@ ${colors.yellow("EXAMPLES:")}
 
     const discordToken = await Input.prompt({
       message: "Discord Bot Token:",
-      type: "password",
+      transform: (value: string) => "*".repeat(value.length),
     });
 
     const guildId = await Input.prompt({
@@ -265,11 +262,11 @@ ${colors.yellow("EXAMPLES:")}
 
   private async createConfigFiles(config: CLIConfig, projectInfo: any): Promise<void> {
     // Create .env file
-    const envContent = this.generateEnvFile(config);
+    const envContent = await this.generateEnvFile(config, config.projectPath);
     await Deno.writeTextFile(join(config.projectPath, ".env"), envContent);
 
     // Create .env.example
-    const envExampleContent = this.generateEnvExampleFile();
+    const envExampleContent = await this.generateEnvExampleFile(config.projectPath);
     await Deno.writeTextFile(join(config.projectPath, ".env.example"), envExampleContent);
 
     // Copy core files
@@ -284,19 +281,106 @@ ${colors.yellow("EXAMPLES:")}
     console.log(`  - README.md (ドキュメント)`);
   }
 
-  protected generateEnvFile(config: CLIConfig): string {
-    return `# Claude Discord Bot Configuration
-DISCORD_BOT_TOKEN=${config.discordToken || "YOUR_BOT_TOKEN_HERE"}
-GUILD_ID=${config.guildId || "YOUR_GUILD_ID_HERE"}
-AUTHORIZED_USER_ID=${config.authorizedUserId || "YOUR_USER_ID_HERE"}
-DISCORD_CHANNEL_NAME=${config.channelName}
-TMUX_SESSION_NAME=${config.tmuxSessionName}
-LOG_LEVEL=${config.logLevel}
-`;
+  protected async generateEnvFile(config: CLIConfig, projectPath: string): Promise<string> {
+    const envPath = join(projectPath, ".env");
+    let existingContent = "";
+    const existingVars = new Map<string, string>();
+
+    // 既存の.envファイルを読み込み
+    try {
+      existingContent = await Deno.readTextFile(envPath);
+      // 既存の環境変数を解析
+      for (const line of existingContent.split("\n")) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#")) {
+          const [key, ...valueParts] = trimmed.split("=");
+          if (key && valueParts.length > 0) {
+            existingVars.set(key.trim(), valueParts.join("=").trim());
+          }
+        }
+      }
+    } catch {
+      // ファイルが存在しない場合は新規作成
+    }
+
+    // Claude Discord Bot用の必要な設定項目
+    const requiredVars = new Map([
+      [
+        "DISCORD_BOT_TOKEN",
+        config.discordToken || existingVars.get("DISCORD_BOT_TOKEN") || "YOUR_BOT_TOKEN_HERE",
+      ],
+      ["GUILD_ID", config.guildId || existingVars.get("GUILD_ID") || "YOUR_GUILD_ID_HERE"],
+      [
+        "AUTHORIZED_USER_ID",
+        config.authorizedUserId || existingVars.get("AUTHORIZED_USER_ID") || "YOUR_USER_ID_HERE",
+      ],
+      [
+        "DISCORD_CHANNEL_NAME",
+        config.channelName || existingVars.get("DISCORD_CHANNEL_NAME") || "claude",
+      ],
+      [
+        "TMUX_SESSION_NAME",
+        config.tmuxSessionName || existingVars.get("TMUX_SESSION_NAME") || "claude-main",
+      ],
+      ["LOG_LEVEL", config.logLevel || existingVars.get("LOG_LEVEL") || "info"],
+    ]);
+
+    // 既存の設定を更新・新規項目を追加
+    for (const [key, value] of requiredVars) {
+      existingVars.set(key, value);
+    }
+
+    // 新しい.envファイルの内容を生成
+    let newContent = "";
+
+    // 既存コメントと非Claude設定を保持
+    if (existingContent) {
+      const lines = existingContent.split("\n");
+      const claudeVarNames = Array.from(requiredVars.keys());
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("#") || trimmed === "") {
+          // コメント行と空行はそのまま保持
+          newContent += line + "\n";
+        } else {
+          const [key] = trimmed.split("=");
+          if (key && !claudeVarNames.includes(key.trim())) {
+            // Claude以外の既存設定はそのまま保持
+            newContent += line + "\n";
+          }
+        }
+      }
+    }
+
+    // Claude Discord Bot設定セクションを追加
+    if (!existingContent.includes("# Claude Discord Bot Configuration")) {
+      newContent += "\n# Claude Discord Bot Configuration\n";
+    }
+
+    // Claude用の設定項目を追加
+    const claudeVarNames = Array.from(requiredVars.keys());
+    for (const key of claudeVarNames) {
+      newContent += `${key}=${existingVars.get(key)}\n`;
+    }
+
+    return newContent;
   }
 
-  private generateEnvExampleFile(): string {
-    return `# Claude Discord Bot Configuration Template
+  private async generateEnvExampleFile(projectPath: string): Promise<string> {
+    const envExamplePath = join(projectPath, ".env.example");
+    let existingContent = "";
+
+    // 既存の.env.exampleファイルを読み込み
+    try {
+      existingContent = await Deno.readTextFile(envExamplePath);
+    } catch {
+      // ファイルが存在しない場合は新規作成
+    }
+
+    // Claude Discord Bot用の設定例
+    const claudeBotSection = `
+# Claude Discord Bot Configuration Template
 DISCORD_BOT_TOKEN=your_discord_bot_token_here
 GUILD_ID=your_discord_guild_id_here  
 AUTHORIZED_USER_ID=your_discord_user_id_here
@@ -304,6 +388,14 @@ DISCORD_CHANNEL_NAME=claude
 TMUX_SESSION_NAME=claude-main
 LOG_LEVEL=info
 `;
+
+    // 既にClaude Discord Bot設定が含まれているかチェック
+    if (existingContent.includes("Claude Discord Bot Configuration")) {
+      return existingContent; // 既に設定済みの場合はそのまま返す
+    }
+
+    // 既存内容に追記
+    return existingContent ? existingContent + claudeBotSection : claudeBotSection.trim();
   }
 
   private async copyBotFiles(projectPath: string): Promise<void> {
@@ -313,17 +405,25 @@ LOG_LEVEL=info
     // Import template files
     const { TEMPLATE_FILES } = await import("./templates/core-files.ts");
 
+    // Files that should not be overwritten (we handle them separately)
+    const skipFiles = [".env", ".env.example"];
+
     // Create all template files
     for (const [relativePath, content] of Object.entries(TEMPLATE_FILES)) {
+      // Skip files that we've already processed
+      if (skipFiles.includes(relativePath)) {
+        continue;
+      }
+
       const fullPath = join(projectPath, relativePath);
       const dir = dirname(fullPath);
-      
+
       // Ensure directory exists
       await ensureDir(dir);
-      
-      // Write file content  
+
+      // Write file content
       await Deno.writeTextFile(fullPath, content);
-      
+
       // Make executable if it's a script
       if (relativePath.endsWith("discord-respond.ts") || relativePath.endsWith("bot.ts")) {
         await Deno.chmod(fullPath, 0o755);
@@ -333,13 +433,48 @@ LOG_LEVEL=info
 
   private async startCommand(args: any): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
-    
+
     const projectPath = args.project || Deno.cwd();
     const envPath = join(projectPath, ".env");
-    
+
     if (!await exists(envPath)) {
       console.log(colors.red("❌ .env ファイルが見つかりません"));
       console.log("まず 'claude-discord-bot init' を実行してください");
+      return;
+    }
+
+    // Check if deno.json exists
+    const denoJsonPath = join(projectPath, "deno.json");
+    if (!await exists(denoJsonPath)) {
+      console.log(colors.red("❌ deno.json が見つかりません"));
+      console.log("まず 'claude-discord-bot init' を実行してください");
+      return;
+    }
+
+    // Install dependencies first
+    console.log(colors.yellow("📦 依存関係をインストール中..."));
+    const installCmd = new Deno.Command("deno", {
+      args: ["install"],
+      cwd: projectPath,
+      stdout: "piped",
+      stderr: "piped",
+    });
+
+    try {
+      const installProcess = installCmd.spawn();
+      const installStatus = await installProcess.status;
+      
+      if (!installStatus.success) {
+        const errorOutput = await installProcess.output();
+        const errorText = new TextDecoder().decode(errorOutput.stderr);
+        console.log(colors.red("❌ 依存関係のインストールに失敗しました"));
+        console.log(colors.red(errorText));
+        return;
+      }
+      console.log(colors.green("✅ 依存関係のインストール完了"));
+    } catch (error) {
+      console.log(colors.red("❌ 依存関係のインストールに失敗しました"));
+      console.log(colors.red(String(error)));
       return;
     }
 
@@ -349,14 +484,15 @@ LOG_LEVEL=info
     // Start bot (this would execute the actual bot)
     const botPath = join(projectPath, "src", "bot.ts");
     if (await exists(botPath)) {
+      console.log(colors.green("🤖 Bot を起動しています..."));
       const cmd = new Deno.Command("deno", {
         args: ["run", "--allow-all", botPath],
         cwd: projectPath,
       });
-      
+
       const process = cmd.spawn();
       const status = await process.status;
-      
+
       if (!status.success) {
         console.log(colors.red("❌ Bot起動に失敗しました"));
       }

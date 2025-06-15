@@ -221,6 +221,8 @@ console.log("Response queued for Discord");
   "name": "claude-discord-bot",
   "version": "1.0.0",
   "description": "Discord bot for Claude Code integration",
+  "exports": "./src/bot.ts",
+  "nodeModulesDir": "auto",
   "compilerOptions": {
     "allowJs": true,
     "strict": true,
