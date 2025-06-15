@@ -437,8 +437,8 @@ LOG_LEVEL=info
 
     console.log(colors.yellow("📦 Claude Discord Bot をダウンロード中..."));
     
-    // Download and run the bot directly from GitHub
-    const botUrl = "https://raw.githubusercontent.com/azumag/ccc/main/src/bot.ts";
+    // Download and run the bot directly from GitHub (standalone version)
+    const botUrl = "https://raw.githubusercontent.com/azumag/ccc/main/src/bot-standalone.ts";
     try {
       const cmd = new Deno.Command("deno", {
         args: ["run", "--allow-all", botUrl],
