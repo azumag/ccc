@@ -260,24 +260,26 @@ ${colors.yellow("EXAMPLES:")}
   }
 
   private async createConfigFiles(config: CLIConfig, projectInfo: any): Promise<void> {
+    const createdFiles: string[] = [];
+
     // Create .env file
     const envContent = await this.generateEnvFile(config, config.projectPath);
     await Deno.writeTextFile(join(config.projectPath, ".env"), envContent);
+    createdFiles.push(".env (Discord設定)");
 
     // Create .env.example
     const envExampleContent = await this.generateEnvExampleFile(config.projectPath);
     await Deno.writeTextFile(join(config.projectPath, ".env.example"), envExampleContent);
+    createdFiles.push(".env.example (設定テンプレート)");
 
-    // Copy core files
-    await this.copyBotFiles(config.projectPath);
+    // Copy core files and track what was actually created
+    const coreFiles = await this.copyBotFiles(config.projectPath);
+    createdFiles.push(...coreFiles);
 
-    console.log(`\n📄 作成されたファイル:`);
-    console.log(`  - .env (Discord設定)`);
-    console.log(`  - .env.example (設定テンプレート)`);
-    console.log(`  - src/bot.ts (メインBot実装)`);
-    console.log(`  - src/discord-respond.ts (直接応答スクリプト)`);
-    console.log(`  - deno.json (Deno設定)`);
-    console.log(`  - README.md (ドキュメント)`);
+    console.log(`\n📄 処理されたファイル:`);
+    for (const file of createdFiles) {
+      console.log(`  - ${file}`);
+    }
   }
 
   protected async generateEnvFile(config: CLIConfig, projectPath: string): Promise<string> {
@@ -397,24 +399,41 @@ LOG_LEVEL=info
     return existingContent ? existingContent + claudeBotSection : claudeBotSection.trim();
   }
 
-  private async copyBotFiles(projectPath: string): Promise<void> {
-    const srcDir = join(projectPath, "src");
-    await ensureDir(srcDir);
-
+  private async copyBotFiles(projectPath: string): Promise<string[]> {
     // Import template files
     const { TEMPLATE_FILES } = await import("./templates/core-files.ts");
 
-    // Files that should not be overwritten (we handle them separately)
+    // Files that should not be overwritten
     const skipFiles = [".env", ".env.example"];
+    
+    // Files that should only be created if they don't exist
+    const skipIfExists = ["README.md"];
+    
+    const createdFiles: string[] = [];
 
     // Create all template files
     for (const [relativePath, content] of Object.entries(TEMPLATE_FILES)) {
-      // Skip files that we've already processed
+      // Skip files that we handle separately
       if (skipFiles.includes(relativePath)) {
         continue;
       }
-
+      
+      // Skip src directory files entirely
+      if (relativePath.startsWith("src/")) {
+        console.log(colors.yellow(`⏭️  Skipping ${relativePath} (src files are not modified)`));
+        continue;
+      }
+      
       const fullPath = join(projectPath, relativePath);
+      
+      // Skip files that exist if they're in the skipIfExists list
+      if (skipIfExists.includes(relativePath)) {
+        if (await exists(fullPath)) {
+          console.log(colors.yellow(`⏭️  Skipping ${relativePath} (file already exists)`));
+          continue;
+        }
+      }
+
       const dir = dirname(fullPath);
 
       // Ensure directory exists
@@ -422,12 +441,28 @@ LOG_LEVEL=info
 
       // Write file content
       await Deno.writeTextFile(fullPath, content);
+      
+      // Add to created files list with description
+      let description = "";
+      switch (relativePath) {
+        case "deno.json":
+          description = "deno.json (Deno設定)";
+          break;
+        case "README.md":
+          description = "README.md (ドキュメント)";
+          break;
+        default:
+          description = relativePath;
+      }
+      createdFiles.push(description);
 
       // Make executable if it's a script
       if (relativePath.endsWith("discord-respond.ts") || relativePath.endsWith("bot.ts")) {
         await Deno.chmod(fullPath, 0o755);
       }
     }
+    
+    return createdFiles;
   }
 
   private async startCommand(args: any): Promise<void> {
