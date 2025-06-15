@@ -1,0 +1,52 @@
+{
+  "name": "@azumag/claude-discord-bot-cli",
+  "version": "1.0.0",
+  "description": "CLI tool for setting up Claude Discord Bot in any project",
+  "main": "cli.ts",
+  "bin": {
+    "claude-discord-bot": "./cli.ts"
+  },
+  "scripts": {
+    "build": "deno compile --allow-all --output ./bin/claude-discord-bot cli.ts",
+    "install-global": "deno install --global --allow-all -n claude-discord-bot cli.ts",
+    "test": "deno test --allow-all tests/",
+    "fmt": "deno fmt",
+    "lint": "deno lint",
+    "check": "deno check cli.ts mod.ts src/**/*.ts"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "claude",
+    "ai",
+    "cli",
+    "automation",
+    "deno",
+    "typescript"
+  ],
+  "author": {
+    "name": "azumag",
+    "url": "https://github.com/azumag"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/azumag/ccc.git"
+  },
+  "homepage": "https://github.com/azumag/ccc#readme",
+  "bugs": {
+    "url": "https://github.com/azumag/ccc/issues"
+  },
+  "engines": {
+    "deno": ">=2.0.0"
+  },
+  "files": [
+    "mod.ts",
+    "cli.ts",
+    "src/",
+    "templates/",
+    "PACKAGE-README.md",
+    "deno.json",
+    "deno.lock"
+  ]
+}

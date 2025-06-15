@@ -4,10 +4,10 @@
  * Easy installation and management for Claude Discord Bot across multiple projects
  */
 
-import { parseArgs } from "jsr:@std/cli/parse-args";
-import { load } from "jsr:@std/dotenv";
-import { ensureDir, exists } from "jsr:@std/fs";
-import { dirname, join } from "jsr:@std/path";
+import { parseArgs } from "@std/cli/parse-args";
+import { load } from "@std/dotenv";
+import { ensureDir, exists } from "@std/fs";
+import { dirname, join } from "@std/path";
 import { Confirm, Input, Secret, Select } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 
