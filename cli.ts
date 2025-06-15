@@ -8,7 +8,7 @@ import { parseArgs } from "jsr:@std/cli/parse-args";
 import { load } from "jsr:@std/dotenv";
 import { ensureDir, exists } from "jsr:@std/fs";
 import { dirname, join } from "jsr:@std/path";
-import { Confirm, Input, Select } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
+import { Confirm, Input, Secret, Select } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 
 const VERSION = "1.0.0";
@@ -240,9 +240,8 @@ ${colors.yellow("EXAMPLES:")}
     console.log("Discord Developer Portal で Bot を作成してください:");
     console.log("https://discord.com/developers/applications");
 
-    const discordToken = await Input.prompt({
+    const discordToken = await Secret.prompt({
       message: "Discord Bot Token:",
-      transform: (value: string) => "*".repeat(value.length),
     });
 
     const guildId = await Input.prompt({
