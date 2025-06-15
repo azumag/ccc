@@ -1,6 +1,11 @@
 # Claude Discord Bot
 
-シンプルなチャネル監視型Discord Botで、指定したチャネルの投稿をClaude Codeに送信して実行します。
+🤖 シンプルなチャネル監視型Discord Botで、指定したチャネルの投稿をClaude Codeに送信して実行します。
+
+[![GitHub](https://img.shields.io/github/stars/azumag/ccc?style=social)](https://github.com/azumag/ccc)
+[![Deno](https://img.shields.io/badge/deno-2.0+-green)](https://deno.land/)
+[![CLI](https://img.shields.io/badge/CLI-Ready-blue)](https://github.com/azumag/ccc)
+[![Docker](https://img.shields.io/badge/Docker-Supported-blue)](https://github.com/azumag/ccc/blob/main/docker-compose.yml)
 
 ## ✨ 特徴
 
@@ -11,31 +16,82 @@
 - 🛡️ **権限フリー**: `--dangerously-skip-permissions`で制約なし
 - 📊 **ステータス管理**: リアルタイムでBot状態を確認
 - 🧪 **テスト対応**: 包括的なテストスイート
+- 📦 **パッケージ化**: JSR/npm で簡単インストール
+- 🔒 **ファイル保護**: 既存プロジェクトを安全に拡張
 
 ## 🚀 クイックスタート
 
-### 1. 前提条件
+### 📦 方法1: GitHubから直接インストール（推奨）
+
+```bash
+# GitHubから直接インストール
+deno install --global --allow-all -n claude-discord-bot https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts
+
+# プロジェクトに Claude Discord Bot を追加
+cd your-project
+claude-discord-bot init
+
+# Bot を起動（依存関係も自動インストール）
+claude-discord-bot start
+```
+
+### 🔄 方法2: 一時使用（インストール不要）
+
+```bash
+# 一度だけ使用
+cd your-project
+deno run --allow-all https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts init
+deno run --allow-all https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts start
+```
+
+### 💻 方法3: 開発・カスタマイズ用
+
+```bash
+# リポジトリクローン
+git clone https://github.com/azumag/ccc.git
+cd ccc
+
+# 依存関係インストール
+deno install
+
+# ローカルでビルド・インストール
+deno install --global --allow-all -n claude-discord-bot ./cli.ts
+```
+
+### 🔧 前提条件
 
 - [Deno](https://deno.land/) 2.0+
 - [tmux](https://github.com/tmux/tmux)
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) (認証済み)
 - Discord Bot Token
 
-### 2. インストール
+## ⚙️ セットアップ
+
+### 1. Discord Bot セットアップ
+
+1. [Discord Developer Portal](https://discord.com/developers/applications)でアプリケーション作成
+2. Bot作成とトークン取得
+3. **必要な権限設定**:
+   - Send Messages
+   - Read Message History
+   - View Channels
+4. **Privileged Gateway Intents有効化**:
+   - ✅ Message Content Intent
+5. サーバーに招待
+
+### 2. Claude Discord Bot 初期化
 
 ```bash
-# リポジトリクローン
-git clone <repository-url>
-cd claude-discord-bot
+# プロジェクトディレクトリで初期化（対話式）
+claude-discord-bot init
 
-# 環境変数設定
-cp .env.example .env
-# .envファイルを編集して必要な値を設定
+# または環境変数を直接指定
+claude-discord-bot init \
+  --channel claude-dev \
+  --log-level debug
 ```
 
-### 3. 環境変数設定
-
-`.env`ファイルに以下を設定:
+初期化時に設定される環境変数：
 
 ```bash
 # Discord設定
@@ -53,35 +109,20 @@ TMUX_SESSION_NAME=claude-main
 LOG_LEVEL=info
 ```
 
-### 4. Discord Bot セットアップ
-
-1. [Discord Developer Portal](https://discord.com/developers/applications)でアプリケーション作成
-2. Bot作成とトークン取得
-3. **必要な権限設定**:
-   - Send Messages
-   - Read Message History
-   - View Channels
-4. **Privileged Gateway Intents有効化**:
-   - ✅ Message Content Intent
-5. サーバーに招待
-
-### 5. CLIツールインストール（推奨）
+### 3. PATH設定（必要に応じて）
 
 ```bash
-# CLIツールをグローバルインストール
-deno install --global --allow-all -n claude-discord-bot ./cli.ts
-
-# PATHに追加（永続的）
-echo 'export PATH="/Users/$USER/.deno/bin:$PATH"' >> ~/.zshrc
+# Denoのバイナリを PATH に追加（永続的）
+echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 
 # または一時的に設定
 export PATH="$HOME/.deno/bin:$PATH"
 ```
 
-### 6. 起動
+## 🚀 使用方法
 
-#### ローカル実行
+### 基本的な使い方
 
 ```bash
 # CLIツール使用（推奨）
@@ -94,12 +135,73 @@ claude-discord-bot start --channel dev-claude
 # デバッグモード
 claude-discord-bot start --log-level debug
 
-# または直接実行（事前に依存関係をインストール）
-deno install
-deno task start
+# ステータス確認
+claude-discord-bot status
+
+# ヘルプ表示
+claude-discord-bot --help
 ```
 
-#### Docker実行
+### 開発者向け（リポジトリクローン時）
+
+```bash
+# 依存関係インストール
+deno install
+
+# 直接実行
+deno task start
+
+# 開発モード（ファイル監視）
+deno task dev
+```
+
+### プログラマティック使用
+
+TypeScript/JavaScript プロジェクト内で直接使用：
+
+```typescript
+// GitHub URLから直接インポート（開発版）
+import { 
+  quickSetup, 
+  ClaudeDiscordBotCLI,
+  ClaudeDiscordBot 
+} from "https://raw.githubusercontent.com/azumag/ccc/main/mod.ts";
+
+// 簡単セットアップ
+const config = await quickSetup("./my-project", {
+  channelName: "claude-dev",
+  logLevel: "debug",
+  tmuxSessionName: "my-claude-session"
+});
+
+// 詳細制御
+const cli = new ClaudeDiscordBotCLI();
+await cli.run(["init", "--project", "./my-project"]);
+
+// Botインスタンスの直接制御
+const bot = new ClaudeDiscordBot({
+  discordToken: process.env.DISCORD_BOT_TOKEN!,
+  guildId: process.env.GUILD_ID!,
+  authorizedUserId: process.env.AUTHORIZED_USER_ID!,
+  channelName: "claude",
+  tmuxSessionName: "claude-main",
+  logLevel: "info"
+});
+
+await bot.start();
+```
+
+<!-- JSR公開後は以下を使用:
+```typescript
+import { 
+  quickSetup, 
+  ClaudeDiscordBotCLI,
+  ClaudeDiscordBot 
+} from "jsr:@azumag/claude-discord-bot";
+```
+-->
+
+### Docker実行
 
 ```bash
 # 1. 環境変数準備
@@ -119,7 +221,7 @@ docker exec -it claude-discord-bot tmux attach -t claude-main
 docker-compose down
 ```
 
-## 💡 使用方法
+## 💡 実際の使用例
 
 ### 基本操作
 
@@ -451,14 +553,25 @@ console.log(getUserName(null));  // "UNKNOWN USER"
 4. **エラーハンドリング**: try-catch文で予期しないエラーをキャッチ
 ```
 
-### CLIコマンド
+## 🛠️ CLI コマンドリファレンス
+
+### 基本コマンド
 
 ```bash
 # 初期設定（対話式）
 claude-discord-bot init
 
-# Bot起動
+# 特定のプロジェクトに設定
+claude-discord-bot init --project /path/to/project
+
+# Bot起動（依存関係も自動インストール）
 claude-discord-bot start
+
+# 特定のチャネルで起動
+claude-discord-bot start --channel dev-claude
+
+# デバッグモードで起動
+claude-discord-bot start --log-level debug
 
 # ステータス確認
 claude-discord-bot status
@@ -466,8 +579,35 @@ claude-discord-bot status
 # Bot停止
 claude-discord-bot stop
 
+# CLI更新
+claude-discord-bot update
+
 # ヘルプ表示
 claude-discord-bot --help
+
+# バージョン表示
+claude-discord-bot --version
+```
+
+### オプション
+
+| オプション | 短縮 | 説明 | デフォルト |
+|-----------|------|------|-----------|
+| `--channel <name>` | `-c` | Discord チャネル名 | `claude` |
+| `--project <path>` | `-p` | プロジェクトパス | 現在のディレクトリ |
+| `--log-level <level>` | | ログレベル | `info` |
+| `--help` | `-h` | ヘルプ表示 | |
+| `--version` | `-v` | バージョン表示 | |
+
+### 一回限り実行
+
+```bash
+# インストール不要で一度だけ実行
+deno run --allow-all https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts init
+deno run --allow-all https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts start
+
+# JSR公開後（準備中）:
+# deno run --allow-all jsr:@azumag/claude-discord-bot/cli init
 ```
 
 ### Discord特殊コマンド
@@ -689,6 +829,36 @@ tmux send-keys -t test-claude "claude --dangerously-skip-permissions" Enter
 
 # バージョン表示
 --version
+```
+
+## 🛡️ 安全性とファイル保護
+
+Claude Discord Bot CLI は既存プロジェクトの安全性を最優先に設計されています：
+
+### ✅ 保護されるファイル・ディレクトリ
+
+- **`README.md`** - 既存のドキュメントは完全に保護
+- **`src/` ディレクトリ** - 既存のソースコードには一切手を加えない
+- **既存の `.env`** - 環境変数に追記のみ、既存設定は保持
+- **既存の `.env.example`** - テンプレートに追記のみ
+
+### ➕ 作成・更新されるファイル
+
+- **`deno.json`** - 必要な場合のみ作成（Node.js プロジェクトでは作成しない）
+- **環境変数の追加** - Claude Discord Bot 用の設定のみ追記
+
+### 🔄 初期化時の動作
+
+```bash
+claude-discord-bot init
+
+# 実行時の出力例:
+# ⏭️  Skipping src/bot.ts (src files are not modified)
+# ⏭️  Skipping README.md (file already exists)
+# 📄 処理されたファイル:
+#   - .env (Discord設定)
+#   - .env.example (設定テンプレート)  
+#   - deno.json (Deno設定)
 ```
 
 ## 🔒 セキュリティ
