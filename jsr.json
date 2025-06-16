@@ -1,6 +1,6 @@
 {
   "name": "@azumag/claude-discord-bot",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "description": "CLI tool for setting up Claude Discord Bot in any project",
   "license": "MIT",
   "repository": {
