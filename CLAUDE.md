@@ -26,6 +26,11 @@ CLIツールの修正・機能追加時は必ずバージョンを更新する�
 - `cli.ts`の`VERSION`定数
 - `deno.json`の`version`
 
+### 更新対象ファイル（追加）
+
+- `cli-standalone.ts`の`VERSION`定数
+- `jsr.json`の`version`
+
 ### 更新後の手順
 
 ```bash
@@ -33,6 +38,33 @@ CLIツールの修正・機能追加時は必ずバージョンを更新する�
 /Users/azumag/.deno/bin/deno compile --allow-all --output ./bin/claude-discord-bot cli.ts
 /Users/azumag/.deno/bin/deno install --global --allow-all --config deno.json -f -n claude-discord-bot cli.ts
 ```
+
+## CLI ファイル同期管理
+
+`cli.ts`と`cli-standalone.ts`は常に機能的に同期されている必要がある：
+
+### 1. 修正時の必須チェック
+
+- `cli.ts`を修正した場合、必ず`cli-standalone.ts`も同様に修正
+- バージョン番号は両方で一致させる（VERSION定数）
+- 新機能追加時は両ファイルに反映
+- importパスの違い以外は機能的に同一を維持
+
+### 2. コミット前チェック
+
+- 両ファイルのVERSION定数が一致しているか確認
+- 主要機能（init, start, send-to-discord等）が両方に存在するか確認
+- クラス構造とメソッドが同期されているか確認
+
+### 3. テスト要件
+
+- 両方のファイルで`--version`コマンドが同じ結果を返すこと
+- GitHubからの直接インストールでも最新機能が利用できること
+- ローカルインストールとリモートインストールで同じ動作をすること
+
+### 4. 理由
+
+GitHubのCDNキャッシュにより、`cli-standalone.ts`が古いバージョンで提供される問題を防ぐため
 
 ## 開発フロー
 
