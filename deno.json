@@ -1,6 +1,6 @@
 {
   "name": "@azumag/claude-discord-bot",
-  "version": "1.0.0",
+  "version": "1.8.0",
   "description": "CLI tool for setting up Claude Discord Bot in any project",
   "license": "MIT",
   "repository": {
@@ -46,8 +46,12 @@
     }
   },
   "compilerOptions": {
-    "allowJs": true,
     "lib": ["deno.window"],
-    "strict": true
-  }
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "nodeModulesDir": "auto"
 }

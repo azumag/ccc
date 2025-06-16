@@ -12,6 +12,28 @@
 
 タスク終了後、かならず単体テストと静的解析を実行し、fixを行う
 
+## バージョン管理
+
+CLIツールの修正・機能追加時は必ずバージョンを更新する：
+
+1. **マイナー更新**（機能追加・修正）: `1.1.0` → `1.2.0`
+2. **パッチ更新**（バグ修正のみ）: `1.1.0` → `1.1.1`
+3. **メジャー更新**（破壊的変更）: `1.1.0` → `2.0.0`
+
+### 更新対象ファイル
+
+- `package.json`の`version`
+- `cli.ts`の`VERSION`定数
+- `deno.json`の`version`
+
+### 更新後の手順
+
+```bash
+# ビルド・インストール
+/Users/azumag/.deno/bin/deno compile --allow-all --output ./bin/claude-discord-bot cli.ts
+/Users/azumag/.deno/bin/deno install --global --allow-all --config deno.json -f -n claude-discord-bot cli.ts
+```
+
 ## 開発フロー
 
 ### 1. 課題管理とIssue駆動開発
