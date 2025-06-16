@@ -12,7 +12,7 @@ import { dirname, join } from "jsr:@std/path";
 import { Confirm, Input, Secret, Select } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 
-const VERSION = "1.0.0";
+const VERSION = "1.8.3";
 
 interface CLIConfig {
   projectPath: string;
