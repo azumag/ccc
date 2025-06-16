@@ -1,6 +1,6 @@
 {
   "name": "@azumag/claude-discord-bot",
-  "version": "1.0.0",
+  "version": "1.8.3",
   "description": "CLI tool for setting up Claude Discord Bot in any project",
   "license": "MIT",
   "repository": {
@@ -27,12 +27,13 @@
   },
   "exports": {
     ".": "./mod.ts",
-    "./cli": "./cli.ts"
+    "./cli": "./cli-standalone.ts"
   },
   "publish": {
     "include": [
       "mod.ts",
-      "cli.ts", 
+      "cli.ts",
+      "cli-standalone.ts", 
       "src/",
       "templates/",
       "PACKAGE-README.md",
