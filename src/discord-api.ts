@@ -3,7 +3,7 @@
  * This module provides functions that Claude Code can use to post messages to Discord
  */
 
-import { Client, TextChannel } from "discord.js";
+import { Client as _Client, TextChannel as _TextChannel } from "discord.js";
 // Using Deno built-in APIs
 
 export interface DiscordMessage {

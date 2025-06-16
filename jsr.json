@@ -27,7 +27,7 @@
   },
   "exports": {
     ".": "./mod.ts",
-    "./cli": "./cli-standalone.ts"
+    "./cli": "./cli.ts"
   },
   "publish": {
     "include": [

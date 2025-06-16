@@ -19,6 +19,7 @@
     "jsr:@std/path@^1.1.0": "1.1.0",
     "jsr:@std/testing@1": "1.0.14",
     "npm:@types/node@*": "22.15.15",
+    "npm:discord.js@14": "14.19.3",
     "npm:discord.js@^14.14.1": "14.19.3"
   },
   "jsr": {
