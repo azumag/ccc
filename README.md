@@ -695,6 +695,10 @@ deno task lint
 
 # 型チェック
 deno task check
+
+# ローカルビルドとインストール
+/Users/azumag/.deno/bin/deno compile --allow-all --output ./bin/claude-discord-bot cli.ts
+/Users/azumag/.deno/bin/deno install --global --allow-all --config deno.json -f -n claude-discord-bot cli.ts
 ```
 
 ### テスト
