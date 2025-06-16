@@ -7,12 +7,12 @@
 import { parseArgs } from "@std/cli/parse-args";
 import { load } from "@std/dotenv";
 import { ensureDir, exists } from "@std/fs";
-import { dirname, join } from "@std/path";
+import { dirname as _dirname, join } from "@std/path";
 // import { Confirm, Input, Secret, Select } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.8.3";
+const VERSION = "1.8.4";
 
 interface CLIConfig {
   projectPath: string;
@@ -457,7 +457,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
           this.logger.info(`Channel found: ${!!channel}, has send method: ${channel && "send" in channel}`);
           
           if (channel && "send" in channel) {
-            await (channel as any).send(message.content);
+            await (channel as { send: (content: string) => Promise<unknown> }).send(message.content);
             this.logger.info("Successfully sent pending message to Discord");
           } else {
             this.logger.error("Channel not found or doesn't have send method");
@@ -494,7 +494,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
         try {
           const channel = this.client.channels.cache.get(this.targetChannelId);
           if (channel && "send" in channel) {
-            await (channel as any).send("🔄 Claude Discord Bot をシャットダウンしています...");
+            await (channel as { send: (content: string) => Promise<unknown> }).send("🔄 Claude Discord Bot をシャットダウンしています...");
           }
         } catch {
           // Ignore errors when sending shutdown message
@@ -616,7 +616,7 @@ ${colors.yellow("EXAMPLES:")}
 `);
   }
 
-  private async initCommand(args: any): Promise<void> {
+  private async initCommand(args: {_: unknown[], global?: boolean, project?: string}): Promise<void> {
     console.log(colors.cyan("\n🤖 Claude Discord Bot セットアップ\n"));
 
     const projectPath = args.project || Deno.cwd();
@@ -630,20 +630,20 @@ ${colors.yellow("EXAMPLES:")}
       await ensureDir(targetPath);
     } else {
       // Project detection
-      const projectInfo = await this.detectProject(projectPath);
+      const projectInfo = await this.detectProject(projectPath as string);
       console.log(`📁 プロジェクト: ${colors.green(projectInfo.name)}`);
       console.log(`🛠️  言語: ${colors.green(projectInfo.language)}`);
       if (projectInfo.framework) {
         console.log(`📦 フレームワーク: ${colors.green(projectInfo.framework)}`);
       }
-      targetPath = projectPath;
+      targetPath = projectPath as string;
     }
 
     // Interactive configuration
-    const config = await this.interactiveSetup(targetPath, useGlobal);
+    const config = this.interactiveSetup(targetPath, useGlobal as boolean);
 
     // Create configuration files  
-    const projectInfo = useGlobal ? { name: "global", language: "TypeScript" } : await this.detectProject(projectPath);
+    const projectInfo = useGlobal ? { name: "global", language: "TypeScript" } : await this.detectProject(projectPath as string);
     await this.createConfigFiles(config, projectInfo);
 
     console.log(colors.green("\n✅ セットアップ完了！"));
@@ -652,17 +652,16 @@ ${colors.yellow("EXAMPLES:")}
     console.log(`2. ${colors.cyan("claude-discord-bot start")} でBot起動`);
   }
 
-  protected async detectProject(projectPath: string): Promise<any> {
+  protected async detectProject(projectPath: string): Promise<{name: string, language: string, framework?: string}> {
     const packageJsonPath = join(projectPath, "package.json");
     const denoJsonPath = join(projectPath, "deno.json");
     const cargoTomlPath = join(projectPath, "Cargo.toml");
     const requirementsPath = join(projectPath, "requirements.txt");
 
-    let projectInfo = {
+    let projectInfo: {name: string, language: string, framework?: string} = {
       name: "unknown-project",
       language: "unknown",
-      framework: null as string | null,
-      packageManager: null as string | null,
+      framework: undefined,
     };
 
     // Node.js/npm project
@@ -672,8 +671,7 @@ ${colors.yellow("EXAMPLES:")}
         projectInfo = {
           name: packageJson.name || "nodejs-project",
           language: "JavaScript/TypeScript",
-          framework: this.detectJSFramework(packageJson),
-          packageManager: "npm",
+          framework: this.detectJSFramework(packageJson) || undefined,
         };
       } catch {
         // Ignore parsing errors
@@ -685,8 +683,7 @@ ${colors.yellow("EXAMPLES:")}
         projectInfo = {
           name: denoJson.name || "deno-project",
           language: "TypeScript",
-          framework: null,
-          packageManager: "deno",
+          framework: undefined,
         };
       } catch {
         // Ignore parsing errors
@@ -696,24 +693,22 @@ ${colors.yellow("EXAMPLES:")}
       projectInfo = {
         name: "rust-project",
         language: "Rust",
-        framework: null,
-        packageManager: "cargo",
+        framework: undefined,
       };
     } // Python project
     else if (await exists(requirementsPath)) {
       projectInfo = {
         name: "python-project",
         language: "Python",
-        framework: null,
-        packageManager: "pip",
+        framework: undefined,
       };
     }
 
     return projectInfo;
   }
 
-  private detectJSFramework(packageJson: any): string | null {
-    const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+  private detectJSFramework(packageJson: {dependencies?: Record<string, unknown>, devDependencies?: Record<string, unknown>}): string | null {
+    const deps = { ...(packageJson.dependencies || {}), ...(packageJson.devDependencies || {}) };
 
     if (deps.react) return "React";
     if (deps.vue) return "Vue";
@@ -726,7 +721,7 @@ ${colors.yellow("EXAMPLES:")}
     return null;
   }
 
-  private async interactiveSetup(projectPath: string, useGlobal = false): Promise<CLIConfig> {
+  private interactiveSetup(projectPath: string, _useGlobal = false): CLIConfig {
     // Use default values instead of interactive prompts
     const channelName = "claude";
     const tmuxSessionName = "claude-main";
@@ -746,7 +741,7 @@ ${colors.yellow("EXAMPLES:")}
   }
 
 
-  private async createConfigFiles(config: CLIConfig, projectInfo: any): Promise<void> {
+  private async createConfigFiles(config: CLIConfig, _projectInfo: object): Promise<void> {
     const createdFiles: string[] = [];
 
     // Create .env file
@@ -766,7 +761,7 @@ ${colors.yellow("EXAMPLES:")}
   }
 
   protected async generateEnvFile(config: CLIConfig, projectPath: string): Promise<string> {
-    const envPath = join(projectPath, ".env");
+    const envPath = join(projectPath as string, ".env");
     let existingContent = "";
     const existingVars = new Map<string, string>();
 
@@ -884,11 +879,11 @@ LOG_LEVEL=info
 
 
 
-  private async startCommand(args: any): Promise<void> {
+  private async startCommand(args: {_: unknown[], global?: boolean, project?: string}): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
 
     const projectPath = args.project || Deno.cwd();
-    const envPath = join(projectPath, ".env");
+    const envPath = join(projectPath as string, ".env");
 
     // Use global directory if local files don't exist or --global flag is used
     const useGlobal = args.global || !await exists(envPath);
@@ -956,7 +951,7 @@ LOG_LEVEL=info
       // Create and start bot directly
       // Use the actual working directory where start command was executed
       const workingDir = useGlobal ? Deno.cwd() : projectPath;
-      const bot = new ClaudeDiscordBot(config, workingDir);
+      const bot = new ClaudeDiscordBot(config, workingDir as string);
       await bot.start();
       
       console.log(colors.green("✅ Bot が正常に起動しました"));
@@ -979,23 +974,23 @@ LOG_LEVEL=info
     }
   }
 
-  private async statusCommand(): Promise<void> {
+  private statusCommand(): void {
     console.log(colors.cyan("📊 Claude Discord Bot ステータス"));
     console.log("ステータス確認機能は実装中です");
   }
 
-  private async stopCommand(): Promise<void> {
+  private stopCommand(): void {
     console.log(colors.yellow("⏹️  Claude Discord Bot 停止中..."));
     console.log("停止機能は実装中です");
   }
 
-  private async updateCommand(): Promise<void> {
+  private updateCommand(): void {
     console.log(colors.cyan("📦 CLI更新確認中..."));
     console.log("更新機能は実装中です");
   }
 
-  private async sendToDiscordCommand(args: any): Promise<void> {
-    const message = args._[1] as string;
+  private async sendToDiscordCommand(args: {_: unknown[], session?: string}): Promise<void> {
+    const message = (args as {_: unknown[]})._[1] as string;
     const sessionName = args.session || Deno.env.get("TMUX_SESSION_NAME") || "claude-main";
     
     if (!message) {

@@ -6,7 +6,7 @@
 
 import { load } from "jsr:@std/dotenv";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
-import process from "node:process";
+import _process from "node:process";
 
 // Simplified standalone version - core functionality only
 interface BotConfig {
@@ -366,7 +366,7 @@ export class ClaudeDiscordBot {
     }
   }
 
-  async stop(): Promise<void> {
+  stop(): void {
     this.logger.info("Stopping Claude Discord Bot...");
     this.client.destroy();
   }

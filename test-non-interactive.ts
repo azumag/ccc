@@ -34,11 +34,11 @@ class TestCLI extends ClaudeDiscordBotCLI {
   }
   
   // Make protected methods public for testing
-  public async detectProject(path: string) {
+  public detectProject(path: string) {
     return super.detectProject(path);
   }
   
-  public generateEnvFile(config: any) {
+  public generateEnvFile(config: Record<string, unknown>) {
     return super.generateEnvFile(config);
   }
 }

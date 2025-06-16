@@ -207,8 +207,8 @@ export class TmuxSessionManager {
   private parseClaudeOutput(rawOutput: string): string {
     const lines = rawOutput.split("\n");
     const claudeResponse: string[] = [];
-    let capturing = false;
-    let foundResponse = false;
+    const _capturing = false;
+    const _foundResponse = false;
     let lastPromptIndex = -1;
 
     this.logger.debug(`Parsing ${lines.length} lines of output`);
@@ -250,7 +250,7 @@ export class TmuxSessionManager {
     }
 
     // Clean up the response
-    let response = claudeResponse.join("\n").trim();
+    const response = claudeResponse.join("\n").trim();
     
     this.logger.debug(`Final Claude response: ${response.length} characters`);
     this.logger.debug(`Response preview: ${response.substring(0, 200)}...`);
