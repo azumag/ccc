@@ -87,6 +87,7 @@ export class TmuxSessionManager {
         "send-keys",
         "-t",
         this.sessionName,
+        "--",
         "claude --dangerously-skip-permissions",
         "Enter",
       ],
@@ -122,7 +123,7 @@ export class TmuxSessionManager {
 
     // Send prompt text
     const promptResult = await this.executeTmuxCommand({
-      args: ["send-keys", "-t", this.sessionName, cleanPrompt],
+      args: ["send-keys", "-t", this.sessionName, "--", cleanPrompt],
     });
 
     if (!promptResult.success) {
