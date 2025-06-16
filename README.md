@@ -595,6 +595,8 @@ claude-discord-bot --version
 |-----------|------|------|-----------|
 | `--channel <name>` | `-c` | Discord チャネル名 | `claude` |
 | `--project <path>` | `-p` | プロジェクトパス | 現在のディレクトリ |
+| `--global` | | グローバル設定を使用 | `false` |
+| `--session <name>` | `-s` | tmuxセッション名 | `claude-main` |
 | `--log-level <level>` | | ログレベル | `info` |
 | `--help` | `-h` | ヘルプ表示 | |
 | `--version` | `-v` | バージョン表示 | |
