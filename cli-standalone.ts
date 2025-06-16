@@ -318,10 +318,10 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
       
       if (success) {
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-        await thinkingMessage.edit(`✅ 完了 (${duration}s)`);
+        await thinkingMessage.delete();
+        await message.react('👀');
         
         // Claude will send responses using send-to-discord command
-        await message.reply("✅ コマンドをClaude Codeに送信しました。応答はこのチャンネルに表示されます。");
         
         this.stats.messagesProcessed++;
         this.stats.lastActivity = new Date();

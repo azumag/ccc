@@ -362,9 +362,8 @@ export class ClaudeDiscordBot {
       const response = await this.claudeExecutor.executePrompt(prompt, message.channel.id);
 
       // Update thinking message
-      await thinkingMessage.edit(
-        `✅ 完了 (${formatDuration(response.executionTime || 0)})`,
-      );
+      await thinkingMessage.delete();
+      await message.react('👀');
 
       // Send response(s)
       const formattedResponses = this.claudeExecutor.formatResponseForDiscord(response);

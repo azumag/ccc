@@ -252,11 +252,11 @@ export class ClaudeDiscordBot {
       
       if (success) {
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-        await thinkingMessage.edit(`✅ 完了 (${duration}s)`);
+        await thinkingMessage.delete();
+        await message.react('👀');
         
         // In a real implementation, you would capture Claude's response
         // For now, we just acknowledge the command was sent
-        await message.reply("コマンドをClaude Codeに送信しました。tmuxセッションで結果を確認してください。");
         
         this.stats.messagesProcessed++;
         this.stats.lastActivity = new Date();
