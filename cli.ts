@@ -12,7 +12,7 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.20.0";
+const VERSION = "1.21.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -363,9 +363,10 @@ class ClaudeDiscordBot {
       
       // Create enhanced prompt that instructs Claude to use send-to-discord command
       const projectPrefix = this.config.orchestratorMode ? '/project:orchestrator\n\n' : '';
+      const ultrathinkText = this.config.enableUltraThink ? '\n\nultrathink\n' : '';
       const autoCommitFlag = this.config.autoCommit ? ' --auto-commit' : '';
       const autoPushFlag = this.config.autoPush ? ' --auto-push' : '';
-      const enhancedPrompt = `${projectPrefix}${prompt}
+      const enhancedPrompt = `${projectPrefix}${prompt}${ultrathinkText}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}${autoCommitFlag}${autoPushFlag}`;
