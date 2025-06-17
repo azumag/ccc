@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.10.4";
+const VERSION = "1.10.5";
 
 interface CLIConfig {
   projectPath: string;
@@ -178,10 +178,13 @@ class ClaudeDiscordBot {
   private logger: SimpleLogger;
   private targetChannelId = "";
   private stats: BotStats;
+  private instanceId: string;
 
   constructor(config: BotConfig, workingDir?: string) {
+    this.instanceId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     this.config = config;
     this.logger = new SimpleLogger(config.logLevel);
+    this.logger.info(`[INSTANCE] Bot instance created with ID: ${this.instanceId}`);
     this.tmuxManager = new SimpleTmuxManager(config.tmuxSessionName, this.logger, workingDir, config.useDangerouslySkipPermissions || false);
     this.tmuxManager.workingDir = workingDir;
 
@@ -263,31 +266,40 @@ class ClaudeDiscordBot {
 
   private async handleMessage(message: Message): Promise<void> {
     try {
-      this.logger.info(`[ENTRY] handleMessage called for ${message.author.tag}`);
+      this.logger.info(`[ENTRY] [${this.instanceId}] handleMessage called for ${message.author.tag}`);
+      this.logger.info(`[STEP 1] [${this.instanceId}] Message received processing`);
       this.logger.debug(`Message received from ${message.author.tag} (${message.author.id}) in channel ${message.channelId}, bot: ${message.author.bot}, webhook: ${message.webhookId ? 'true' : 'false'}`);
       
+      this.logger.info(`[STEP 2] Checking if message is from self`);
       // Skip messages from this bot itself
       if (message.author.id === this.client.user?.id) {
         this.logger.debug(`Skipping message from self: ${message.author.id}`);
         return;
       }
 
+      this.logger.info(`[STEP 3] Checking target channel`);
       // Check if message is in target channel
       if (message.channelId !== this.targetChannelId) {
         this.logger.debug(`Message not in target channel. Expected: ${this.targetChannelId}, Got: ${message.channelId}`);
         return;
       }
 
+      this.logger.info(`[STEP 4] About to log processing message`);
       this.logger.info(`Processing message from ${message.author.tag} (webhook: ${message.webhookId ? 'yes' : 'no'}): ${message.content.substring(0, 100)}...`);
+      this.logger.info(`[STEP 5] Processing message logged successfully`);
 
+      this.logger.info(`[STEP 6] Checking authorization`);
       // Check authorization if configured
       if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId) {
         this.logger.debug(`Unauthorized user: ${message.author.tag}`);
         return;
       }
 
+      this.logger.info(`[STEP 7] About to log full message content`);
       this.logger.info(`Full message content: "${message.content}"`);
+      this.logger.info(`[STEP 8] Full message content logged successfully`);
       
+      this.logger.info(`[STEP 9] Checking for special commands`);
       // Handle special commands
       this.logger.info("Checking for special commands...");
       if (message.content.startsWith("/")) {
@@ -296,18 +308,22 @@ class ClaudeDiscordBot {
         return;
       }
 
+      this.logger.info(`[STEP 10] No special command detected, proceeding to Claude execution`);
       this.logger.info("No special command detected, proceeding to Claude execution");
+      
+      this.logger.info(`[STEP 11] About to call processMessage`);
       // Process regular message
       await this.processMessage(message);
+      this.logger.info(`[STEP 12] processMessage completed`);
       this.logger.info(`[EXIT] handleMessage completed for ${message.author.tag}`);
     } catch (error) {
-      this.logger.error(`Error in handleMessage: ${error instanceof Error ? error.message : String(error)}`);
-      this.logger.error(`Error stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
+      this.logger.error(`[ERROR] Error in handleMessage: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`[ERROR] Error stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
       
       try {
         await message.reply(`❌ メッセージ処理中にエラーが発生しました: ${error instanceof Error ? error.message : String(error)}`);
       } catch (replyError) {
-        this.logger.error(`Failed to send error reply: ${replyError}`);
+        this.logger.error(`[ERROR] Failed to send error reply: ${replyError}`);
       }
     }
   }
