@@ -12,7 +12,7 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.13.0";
+const VERSION = "1.14.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -176,9 +176,18 @@ class ClaudeDiscordBot {
   private stats: BotStats;
   
   // Message buffering configuration
-  private messageBuffer: Map<string, { messages: Message[], timer?: number }> = new Map();
-  private readonly BUFFER_TIMEOUT_MS = 120000; // 2 minutes
-  private readonly MAX_BUFFER_SIZE = 10; // Maximum messages to buffer before forcing execution
+  private messageBuffer: Map<string, { 
+    messages: Message[], 
+    timer?: number,
+    lastMessageTime: number,
+    burstMode: boolean 
+  }> = new Map();
+  
+  // Buffering timeouts
+  private readonly SHORT_TIMEOUT_MS = 10000; // 10 seconds for single messages
+  private readonly LONG_TIMEOUT_MS = 120000; // 2 minutes for burst mode
+  private readonly BURST_DETECTION_WINDOW_MS = 30000; // 30 seconds to detect burst
+  private readonly MAX_BUFFER_SIZE = 100; // Maximum messages to buffer before forcing execution
 
   constructor(config: BotConfig, workingDir?: string) {
     this.config = config;
@@ -353,21 +362,39 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
   }
 
   /**
-   * Add message to buffer and handle buffer processing
+   * Add message to buffer and handle buffer processing with dynamic timeout
    */
   private async addMessageToBuffer(message: Message): Promise<void> {
     const channelId = message.channel.id;
+    const currentTime = Date.now();
     
     // Get or create buffer for this channel
     let buffer = this.messageBuffer.get(channelId);
     if (!buffer) {
-      buffer = { messages: [] };
+      buffer = { 
+        messages: [], 
+        lastMessageTime: currentTime,
+        burstMode: false 
+      };
       this.messageBuffer.set(channelId, buffer);
+    }
+    
+    // Detect burst mode: multiple messages within burst detection window
+    const timeSinceLastMessage = currentTime - buffer.lastMessageTime;
+    const wasBurstMode = buffer.burstMode;
+    
+    if (timeSinceLastMessage <= this.BURST_DETECTION_WINDOW_MS && buffer.messages.length > 0) {
+      buffer.burstMode = true;
+      if (!wasBurstMode) {
+        this.logger.info(`Burst mode activated - messages coming within ${this.BURST_DETECTION_WINDOW_MS}ms`);
+      }
     }
     
     // Add message to buffer
     buffer.messages.push(message);
-    this.logger.info(`Added message to buffer. Buffer size: ${buffer.messages.length}`);
+    buffer.lastMessageTime = currentTime;
+    
+    this.logger.info(`Added message to buffer. Buffer size: ${buffer.messages.length}, Burst mode: ${buffer.burstMode}`);
     
     // Check if buffer is full
     if (buffer.messages.length >= this.MAX_BUFFER_SIZE) {
@@ -381,11 +408,16 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
       clearTimeout(buffer.timer);
     }
     
-    // Set new timer
+    // Set dynamic timeout based on burst mode
+    const timeout = buffer.burstMode ? this.LONG_TIMEOUT_MS : this.SHORT_TIMEOUT_MS;
+    const timeoutDescription = buffer.burstMode ? "long (burst mode)" : "short (single message)";
+    
+    this.logger.info(`Setting ${timeoutDescription} timeout: ${timeout}ms`);
+    
     buffer.timer = setTimeout(async () => {
-      this.logger.info(`Buffer timeout reached, processing ${buffer.messages.length} messages`);
+      this.logger.info(`Buffer timeout (${timeoutDescription}) reached, processing ${buffer.messages.length} messages`);
       await this.processBufferedMessages(channelId);
-    }, this.BUFFER_TIMEOUT_MS) as unknown as number;
+    }, timeout) as unknown as number;
     
     // Send acknowledgment for the first message
     if (buffer.messages.length === 1) {
@@ -409,11 +441,16 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
       buffer.timer = undefined;
     }
     
-    // Get messages and clear buffer
+    // Get messages and reset buffer state
     const messages = [...buffer.messages];
-    buffer.messages = [];
+    const wasBurstMode = buffer.burstMode;
     
-    this.logger.info(`Processing ${messages.length} buffered messages`);
+    // Reset buffer state
+    buffer.messages = [];
+    buffer.burstMode = false;
+    buffer.lastMessageTime = Date.now();
+    
+    this.logger.info(`Processing ${messages.length} buffered messages (was in burst mode: ${wasBurstMode})`);
     
     // Combine all message contents
     const combinedPrompt = messages.map((msg, index) => {
