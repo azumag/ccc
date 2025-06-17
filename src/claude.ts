@@ -11,15 +11,18 @@ export class ClaudeCodeExecutor {
   private tmuxManager: TmuxSessionManager;
   private projectContext: ProjectContext;
   private logger: Logger;
+  private enableUltraThink: boolean;
 
   constructor(
     tmuxManager: TmuxSessionManager,
     projectContext: ProjectContext,
     logger: Logger,
+    enableUltraThink: boolean = false,
   ) {
     this.tmuxManager = tmuxManager;
     this.projectContext = projectContext;
     this.logger = logger;
+    this.enableUltraThink = enableUltraThink;
   }
 
   /**
@@ -102,9 +105,9 @@ export class ClaudeCodeExecutor {
    * Create enhanced prompt that instructs Claude to respond via Discord
    */
   private createEnhancedPrompt(userPrompt: string): string {
-    return `${userPrompt}
-
-ultrathink
+    const ultrathinkText = this.enableUltraThink ? '\n\nultrathink\n' : '';
+    
+    return `${userPrompt}${ultrathinkText}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 ./discord-respond.ts "あなたの応答内容"`;

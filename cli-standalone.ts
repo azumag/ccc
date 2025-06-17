@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.9.0";
+const VERSION = "1.10.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -33,6 +33,8 @@ interface BotConfig {
   channelName: string;
   tmuxSessionName: string;
   logLevel: string;
+  enableUltraThink?: boolean;
+  useDangerouslySkipPermissions?: boolean;
 }
 
 interface BotStats {
@@ -72,9 +74,11 @@ class SimpleLogger {
 
 class SimpleTmuxManager {
   public workingDir?: string;
+  private useDangerouslySkipPermissions: boolean;
   
-  constructor(private sessionName: string, private logger: SimpleLogger, workingDir?: string) {
+  constructor(private sessionName: string, private logger: SimpleLogger, workingDir?: string, useDangerouslySkipPermissions = false) {
     this.workingDir = workingDir;
+    this.useDangerouslySkipPermissions = useDangerouslySkipPermissions;
   }
 
   async createSession(): Promise<boolean> {
@@ -92,7 +96,10 @@ class SimpleTmuxManager {
       
       if (status.success) {
         // Start Claude Code in the session
-        await this.sendCommand("claude --dangerously-skip-permissions");
+        const claudeCommand = this.useDangerouslySkipPermissions 
+          ? "claude --dangerously-skip-permissions" 
+          : "claude";
+        await this.sendCommand(claudeCommand);
         this.logger.info("Claude Code session started successfully");
         
         // Setup Discord helper script will be done in bot initialization
@@ -175,7 +182,7 @@ class ClaudeDiscordBot {
   constructor(config: BotConfig, workingDir?: string) {
     this.config = config;
     this.logger = new SimpleLogger(config.logLevel);
-    this.tmuxManager = new SimpleTmuxManager(config.tmuxSessionName, this.logger, workingDir);
+    this.tmuxManager = new SimpleTmuxManager(config.tmuxSessionName, this.logger, workingDir, config.useDangerouslySkipPermissions || false);
     this.tmuxManager.workingDir = workingDir;
 
     this.client = new Client({
@@ -308,9 +315,9 @@ class ClaudeDiscordBot {
       
       
       // Create enhanced prompt that instructs Claude to use send-to-discord command
-      const enhancedPrompt = `${message.content}
-
-ultrathink
+      const ultrathinkText = this.config.enableUltraThink ? '\n\nultrathink\n' : '';
+      
+      const enhancedPrompt = `${message.content}${ultrathinkText}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
@@ -535,7 +542,7 @@ export class ClaudeDiscordBotCLI {
   async run(args: string[]): Promise<void> {
     const parsed = parseArgs(args, {
       string: ["channel", "project", "log-level", "session"],
-      boolean: ["help", "version", "verbose", "global"],
+      boolean: ["help", "version", "verbose", "global", "ultrathink", "dangerously-permit"],
       alias: {
         h: "help",
         v: "version",
@@ -602,6 +609,8 @@ ${colors.yellow("OPTIONS:")}
   -p, --project <path>     Project path (default: current directory)
   --global                 Use global directory (~/.claude-discord-bot)
   --log-level <level>      Log level: debug, info, warn, error
+  --ultrathink             Enable ultrathink mode for enhanced responses
+  --dangerously-permit     Use --dangerously-skip-permissions for Claude
   -h, --help              Show this help
   -v, --version           Show version
 
@@ -609,6 +618,8 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot init                           # Interactive setup
   claude-discord-bot init --global                  # Global setup
   claude-discord-bot start --channel dev            # Start with specific channel
+  claude-discord-bot start --ultrathink             # Start with enhanced thinking
+  claude-discord-bot start --dangerously-permit     # Start with permissions bypassed
   claude-discord-bot start --global                 # Start from global directory
   claude-discord-bot status                         # Check bot status
   claude-discord-bot send-to-discord "Hello world"   # Send message to Discord
@@ -875,7 +886,7 @@ LOG_LEVEL=info
     return existingContent ? existingContent + claudeBotSection : claudeBotSection.trim();
   }
 
-  private async startCommand(args: {_: unknown[], global?: boolean, project?: string}): Promise<void> {
+  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean}): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
 
     const projectPath = args.project || Deno.cwd();
@@ -938,6 +949,8 @@ LOG_LEVEL=info
       channelName: Deno.env.get("DISCORD_CHANNEL_NAME") || "claude",
       tmuxSessionName: Deno.env.get("TMUX_SESSION_NAME") || "claude-main",
       logLevel: Deno.env.get("LOG_LEVEL") || "info",
+      enableUltraThink: args.ultrathink || false,
+      useDangerouslySkipPermissions: args["dangerously-permit"] || false,
     };
 
     console.log(colors.green("🤖 Bot を起動しています..."));

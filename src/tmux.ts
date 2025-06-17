@@ -8,11 +8,13 @@ export class TmuxSessionManager {
   private sessionName: string;
   private lastActivity: Date;
   private logger: Logger;
+  private useDangerouslySkipPermissions: boolean;
 
-  constructor(sessionName = "claude-main", logger: Logger) {
+  constructor(sessionName = "claude-main", logger: Logger, useDangerouslySkipPermissions = false) {
     this.sessionName = sessionName;
     this.lastActivity = new Date();
     this.logger = logger;
+    this.useDangerouslySkipPermissions = useDangerouslySkipPermissions;
   }
 
   /**
@@ -82,13 +84,17 @@ export class TmuxSessionManager {
     }
 
     // Start Claude Code in the main pane
+    const claudeCommand = this.useDangerouslySkipPermissions 
+      ? "claude --dangerously-skip-permissions" 
+      : "claude";
+    
     const claudeResult = await this.executeTmuxCommand({
       args: [
         "send-keys",
         "-t",
         this.sessionName,
         "--",
-        "claude --dangerously-skip-permissions",
+        claudeCommand,
         "Enter",
       ],
     });

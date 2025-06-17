@@ -33,11 +33,12 @@ export class ClaudeDiscordBot {
   constructor(config: BotConfig) {
     this.config = config;
     this.logger = new SimpleLogger(config.logLevel);
-    this.tmuxManager = new TmuxSessionManager(config.tmuxSessionName, this.logger);
+    this.tmuxManager = new TmuxSessionManager(config.tmuxSessionName, this.logger, config.useDangerouslySkipPermissions || false);
     this.claudeExecutor = new ClaudeCodeExecutor(
       this.tmuxManager,
       config.projectContext,
       this.logger,
+      config.enableUltraThink || false,
     );
 
     this.client = new Client({
