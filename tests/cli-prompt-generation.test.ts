@@ -32,13 +32,20 @@ function generateEnhancedPrompt(
 ): string {
   const projectPrefix = config.orchestratorMode ? '/project:orchestrator\n\n' : '';
   const ultrathinkText = config.enableUltraThink ? '\n\nultrathink\n' : '';
-  const autoCommitFlag = config.autoCommit ? ' --auto-commit' : '';
-  const autoPushFlag = config.autoPush ? ' --auto-push' : '';
   
-  return `${projectPrefix}${prompt}${ultrathinkText}
+  // Add auto-commit/push instructions to prompt
+  let autoGitInstructions = '';
+  if (config.autoCommit || config.autoPush) {
+    const actions = [];
+    if (config.autoCommit) actions.push('git add . && git commit -m "task: Auto commit on task completion\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>"');
+    if (config.autoPush) actions.push('git push');
+    autoGitInstructions = `\n\n注意: タスク完了後、以下のコマンドを実行してください:\n${actions.join(' && ')}\n`;
+  }
+  
+  return `${projectPrefix}${prompt}${ultrathinkText}${autoGitInstructions}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
-claude-discord-bot send-to-discord "あなたの応答内容" --session ${config.tmuxSessionName}${autoCommitFlag}${autoPushFlag}`;
+claude-discord-bot send-to-discord "あなたの応答内容" --session ${config.tmuxSessionName}`;
 }
 
 Deno.test("Enhanced Prompt Generation - Base case", () => {
@@ -57,8 +64,7 @@ Deno.test("Enhanced Prompt Generation - Base case", () => {
   assertStringIncludes(result, "--session test-session");
   assertEquals(result.includes("/project:orchestrator"), false);
   assertEquals(result.includes("ultrathink"), false);
-  assertEquals(result.includes("--auto-commit"), false);
-  assertEquals(result.includes("--auto-push"), false);
+  assertEquals(result.includes("注意: タスク完了後"), false);
 });
 
 Deno.test("Enhanced Prompt Generation - ultrathink flag", () => {
@@ -108,7 +114,8 @@ Deno.test("Enhanced Prompt Generation - auto-commit flag", () => {
   const prompt = "Test message";
   const result = generateEnhancedPrompt(prompt, config);
   
-  assertStringIncludes(result, "--session test-session --auto-commit");
+  assertStringIncludes(result, "注意: タスク完了後、以下のコマンドを実行してください:");
+  assertStringIncludes(result, "git add . && git commit");
 });
 
 Deno.test("Enhanced Prompt Generation - auto-push flag", () => {
@@ -124,7 +131,8 @@ Deno.test("Enhanced Prompt Generation - auto-push flag", () => {
   const prompt = "Test message";
   const result = generateEnhancedPrompt(prompt, config);
   
-  assertStringIncludes(result, "--session test-session --auto-push");
+  assertStringIncludes(result, "注意: タスク完了後、以下のコマンドを実行してください:");
+  assertStringIncludes(result, "git push");
 });
 
 Deno.test("Enhanced Prompt Generation - all flags combined", () => {
@@ -152,8 +160,10 @@ Deno.test("Enhanced Prompt Generation - all flags combined", () => {
   // Check ultrathink text
   assertStringIncludes(result, "\n\nultrathink\n");
   
-  // Check auto flags
-  assertStringIncludes(result, "--session test-session --auto-commit --auto-push");
+  // Check auto git instructions
+  assertStringIncludes(result, "注意: タスク完了後、以下のコマンドを実行してください:");
+  assertStringIncludes(result, "git add . && git commit");
+  assertStringIncludes(result, "git push");
 });
 
 Deno.test("Enhanced Prompt Generation - prompt order verification", () => {
@@ -165,20 +175,23 @@ Deno.test("Enhanced Prompt Generation - prompt order verification", () => {
     logLevel: "info",
     enableUltraThink: true,
     orchestratorMode: true,
+    autoCommit: true,
   };
   
   const prompt = "Order test";
   const result = generateEnhancedPrompt(prompt, config);
   
-  // Verify the order: orchestrator prefix, then prompt, then ultrathink, then command
+  // Verify the order: orchestrator prefix, then prompt, then ultrathink, then git instructions, then command
   const orchestratorIndex = result.indexOf("/project:orchestrator");
   const promptIndex = result.indexOf("Order test");
   const ultrathinkIndex = result.indexOf("ultrathink");
+  const gitInstructionsIndex = result.indexOf("注意: タスク完了後");
   const commandIndex = result.indexOf("claude-discord-bot send-to-discord");
   
   assertEquals(orchestratorIndex < promptIndex, true, "Orchestrator prefix should come before prompt");
   assertEquals(promptIndex < ultrathinkIndex, true, "Prompt should come before ultrathink");
-  assertEquals(ultrathinkIndex < commandIndex, true, "Ultrathink should come before command");
+  assertEquals(ultrathinkIndex < gitInstructionsIndex, true, "Ultrathink should come before git instructions");
+  assertEquals(gitInstructionsIndex < commandIndex, true, "Git instructions should come before command");
 });
 
 Deno.test("Enhanced Prompt Generation - session name escaping", () => {

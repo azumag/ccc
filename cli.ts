@@ -12,7 +12,7 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.22.0";
+const VERSION = "1.23.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -364,12 +364,20 @@ class ClaudeDiscordBot {
       // Create enhanced prompt that instructs Claude to use send-to-discord command
       const projectPrefix = this.config.orchestratorMode ? '/project:orchestrator\n\n' : '';
       const ultrathinkText = this.config.enableUltraThink ? '\n\nultrathink\n' : '';
-      const autoCommitFlag = this.config.autoCommit ? ' --auto-commit' : '';
-      const autoPushFlag = this.config.autoPush ? ' --auto-push' : '';
-      const enhancedPrompt = `${projectPrefix}${prompt}${ultrathinkText}
+      
+      // Add auto-commit/push instructions to prompt
+      let autoGitInstructions = '';
+      if (this.config.autoCommit || this.config.autoPush) {
+        const actions = [];
+        if (this.config.autoCommit) actions.push('git add . && git commit -m "task: Auto commit on task completion\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>"');
+        if (this.config.autoPush) actions.push('git push');
+        autoGitInstructions = `\n\n注意: タスク完了後、以下のコマンドを実行してください:\n${actions.join(' && ')}\n`;
+      }
+      
+      const enhancedPrompt = `${projectPrefix}${prompt}${ultrathinkText}${autoGitInstructions}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
-claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}${autoCommitFlag}${autoPushFlag}`;
+claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
       
       // Send message to Claude via tmux
       const modeDescription = this.config.orchestratorMode ? 'orchestrator' : 'normal';
@@ -1186,31 +1194,17 @@ LOG_LEVEL=info
     console.log("更新機能は実装中です");
   }
 
-  private async sendToDiscordCommand(args: {_: unknown[], session?: string, "auto-commit"?: boolean, "auto-push"?: boolean}): Promise<void> {
+  private async sendToDiscordCommand(args: {_: unknown[], session?: string}): Promise<void> {
     const message = (args as {_: unknown[]})._[1] as string;
     const sessionName = args.session || Deno.env.get("TMUX_SESSION_NAME") || "claude-main";
-    const autoCommit = args["auto-commit"] || false;
-    const autoPush = args["auto-push"] || false;
     
     if (!message) {
       console.log(colors.red("❌ メッセージが指定されていません"));
-      console.log("使用方法: claude-discord-bot send-to-discord \"メッセージ内容\" [--session セッション名] [--auto-commit] [--auto-push]");
+      console.log("使用方法: claude-discord-bot send-to-discord \"メッセージ内容\" [--session セッション名]");
       return;
     }
 
     try {
-      // Auto commit if flag is set
-      if (autoCommit) {
-        console.log(colors.yellow("🔄 Auto-commit実行中..."));
-        await this.executeAutoCommit();
-      }
-
-      // Auto push if flag is set
-      if (autoPush) {
-        console.log(colors.yellow("📤 Auto-push実行中..."));
-        await this.executeAutoPush();
-      }
-
       // Write message to pending file for active bot to pick up
       const pendingMessage = {
         content: message,
@@ -1227,79 +1221,6 @@ LOG_LEVEL=info
     }
   }
 
-  private async executeAutoCommit(): Promise<void> {
-    try {
-      // Check git status first
-      const statusCmd = new Deno.Command("git", {
-        args: ["status", "--porcelain"],
-      });
-      const statusProcess = statusCmd.spawn();
-      const statusResult = await statusProcess.status;
-      
-      if (!statusResult.success) {
-        console.log(colors.yellow("⚠️ Gitリポジトリが見つかりません"));
-        return;
-      }
-
-      // Get output directly from the command
-      const outputCmd = new Deno.Command("git", {
-        args: ["status", "--porcelain"],
-        stdout: "piped"
-      });
-      const outputProcess = outputCmd.spawn();
-      const outputBytes = await outputProcess.output();
-      const output = new TextDecoder().decode(outputBytes.stdout);
-      
-      if (!output.trim()) {
-        console.log(colors.yellow("⚠️ コミットする変更がありません"));
-        return;
-      }
-
-      // Add all changes
-      const addCmd = new Deno.Command("git", {
-        args: ["add", "."],
-      });
-      const addProcess = addCmd.spawn();
-      await addProcess.status;
-
-      // Create commit
-      const commitCmd = new Deno.Command("git", {
-        args: ["commit", "-m", `task: Auto commit on task completion
-
-🤖 Generated with [Claude Code](https://claude.ai/code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>`],
-      });
-      const commitProcess = commitCmd.spawn();
-      const commitResult = await commitProcess.status;
-
-      if (commitResult.success) {
-        console.log(colors.green("✅ Auto-commit完了"));
-      } else {
-        console.log(colors.red("❌ Auto-commit失敗"));
-      }
-    } catch (error) {
-      console.log(colors.red(`❌ Auto-commit中にエラー: ${error}`));
-    }
-  }
-
-  private async executeAutoPush(): Promise<void> {
-    try {
-      const pushCmd = new Deno.Command("git", {
-        args: ["push"],
-      });
-      const pushProcess = pushCmd.spawn();
-      const pushResult = await pushProcess.status;
-
-      if (pushResult.success) {
-        console.log(colors.green("✅ Auto-push完了"));
-      } else {
-        console.log(colors.red("❌ Auto-push失敗"));
-      }
-    } catch (error) {
-      console.log(colors.red(`❌ Auto-push中にエラー: ${error}`));
-    }
-  }
 }
 
 // Main execution
