@@ -243,7 +243,7 @@ export class TmuxSessionManager {
     const promptIndices: number[] = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (line.includes("❯") || line.includes(">") || line.includes("$")) {
+      if (line && (line.includes("❯") || line.includes(">") || line.includes("$"))) {
         promptIndices.push(i);
         this.logger.debug(`Found prompt at line ${i}: ${line}`);
       }
@@ -251,24 +251,24 @@ export class TmuxSessionManager {
 
     // If we have at least 2 prompts, capture between the last two
     if (promptIndices.length >= 2) {
-      const startIndex = promptIndices[promptIndices.length - 2] + 1;
-      const endIndex = promptIndices[promptIndices.length - 1];
+      const startIndex = (promptIndices[promptIndices.length - 2] ?? 0) + 1;
+      const endIndex = promptIndices[promptIndices.length - 1] ?? lines.length;
       
       this.logger.debug(`Capturing between lines ${startIndex} and ${endIndex}`);
       
       for (let i = startIndex; i < endIndex; i++) {
         const line = lines[i];
-        if (!this.isLogLine(line) && line.trim()) {
+        if (line && !this.isLogLine(line) && line.trim()) {
           claudeResponse.push(line);
         }
       }
     } else {
       // Fallback: capture everything after the last prompt
       if (promptIndices.length > 0) {
-        lastPromptIndex = promptIndices[promptIndices.length - 1];
+        lastPromptIndex = promptIndices[promptIndices.length - 1] ?? 0;
         for (let i = lastPromptIndex + 1; i < lines.length; i++) {
           const line = lines[i];
-          if (!this.isLogLine(line) && line.trim()) {
+          if (line && !this.isLogLine(line) && line.trim()) {
             claudeResponse.push(line);
           }
         }

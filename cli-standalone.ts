@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.11.0";
+const VERSION = "1.12.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -383,7 +383,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
       this.logger.info(`Prompt sent to tmux, success: ${success}`);
       
       if (success) {
-        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        const _duration = ((Date.now() - startTime) / 1000).toFixed(1);
         await thinkingMessage.delete();
         await message.react('👀');
         

@@ -1,3 +1,36 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+This is a Discord bot CLI tool that bridges Discord channels with Claude Code, allowing users to interact with Claude directly through Discord messages. The project is built with Deno and TypeScript.
+
+### Core Architecture
+
+- **CLI Entry Points**: `cli.ts` (with import maps) and `cli-standalone.ts` (with full URLs)
+- **Bot Core**: `src/bot.ts` - Main Discord bot implementation with message buffering
+- **Claude Integration**: `src/claude.ts` - Handles Claude Code execution via tmux
+- **Tmux Management**: `src/tmux.ts` - Session management and command execution
+- **Message Handling**: Messages are buffered for 2 minutes or until 10 messages accumulate, then sent as batch to Claude
+
+### Development Commands
+
+```bash
+# Type checking and linting
+npm run check          # Deno type checking
+npm run lint           # Deno linting
+npm run fmt            # Code formatting
+npm test              # Run tests
+
+# Building and installation
+npm run build         # Compile to executable
+npm run install-global # Install globally
+
+# Development workflow after changes
+npm run build && /Users/azumag/.deno/bin/deno install --global --allow-all --config deno.json -f -n claude-discord-bot cli.ts
+```
+
 ## 🔨 最重要ルール - 新しいルールの追加プロセス
 
 ユーザーから今回限りではなく常に対応が必要だと思われる指示を受けた場合：
@@ -8,7 +41,7 @@
 
 このプロセスにより、プロジェクトのルールを継続的に改善していきます
 
-## qa
+## QA Process
 
 タスク終了後、かならず単体テストと静的解析を実行し、fixを行う
 
@@ -25,9 +58,6 @@ CLIツールの修正・機能追加時は必ずバージョンを更新する�
 - `package.json`の`version`
 - `cli.ts`の`VERSION`定数
 - `deno.json`の`version`
-
-### 更新対象ファイル（追加）
-
 - `cli-standalone.ts`の`VERSION`定数
 - `jsr.json`の`version`
 
@@ -38,7 +68,13 @@ CLIツールの修正・機能追加時は必ずバージョンを更新する�
 /Users/azumag/.deno/bin/deno compile --allow-all --output ./bin/claude-discord-bot cli.ts
 /Users/azumag/.deno/bin/deno install --global --allow-all --config deno.json -f -n claude-discord-bot cli.ts
 
-# 必須：リモートにプッシュ
+# 必須：即座にcommit and push
+git add .
+git commit -m "feat: Update version to X.Y.Z
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
 git push origin main
 ```
 
@@ -46,183 +82,60 @@ git push origin main
 
 `cli.ts`と`cli-standalone.ts`は常に機能的に同期されている必要がある：
 
-### 1. 修正時の必須チェック
+### 修正時の必須チェック
 
 - `cli.ts`を修正した場合、必ず`cli-standalone.ts`も同様に修正
 - バージョン番号は両方で一致させる（VERSION定数）
 - 新機能追加時は両ファイルに反映
 - importパスの違い以外は機能的に同一を維持
 
-### 2. コミット前チェック
+### コミット前チェック
 
 - 両ファイルのVERSION定数が一致しているか確認
 - 主要機能（init, start, send-to-discord等）が両方に存在するか確認
-- クラス構造とメソッドが同期されているか確認
+- クラス構造とメソッドが同sync
 
-### 3. テスト要件
+### テスト要件
 
 - 両方のファイルで`--version`コマンドが同じ結果を返すこと
 - GitHubからの直接インストールでも最新機能が利用できること
 - ローカルインストールとリモートインストールで同じ動作をすること
 
-### 4. 理由
+### 理由
 
 GitHubのCDNキャッシュにより、`cli-standalone.ts`が古いバージョンで提供される問題を防ぐため
 
-## 開発フロー
+## Message Buffering System
 
-### 1. 課題管理とIssue駆動開発
+Discord messages are buffered to reduce API calls and provide better context:
 
-問題を解決する前に、必ずGitHub Issueとして発行し、解決後にissueに紐付けたcommitおよびPRを作成する：
+- **Buffer timeout**: 2 minutes (120,000ms)
+- **Max buffer size**: 10 messages
+- **Per-channel buffering**: Each Discord channel maintains its own buffer
+- Messages are combined with user attribution before sending to Claude
+- Special commands (`/restart`, `/status`) bypass buffering for immediate execution
 
-#### Issue作成のタイミング
+## Development Flow
 
-- バグ修正の前
-- 新機能実装の前
-- リファクタリングの前
-- パフォーマンス改善の前
+### Issue駆動開発
 
-#### Issue作成の手順
+問題を解決する前に、必ずGitHub Issueとして発行し、解決後にissueに紐付けたcommitおよびPRを作成する
 
-```bash
-# Issueを作成
-gh issue create --title "タイトル" --body "詳細説明"
-
-# 作業ブランチ作成（Issue番号を含める）
-git checkout -b feature/issue-123-description
-
-# 作業完了後、commitメッセージにIssue番号を含める
-git commit -m "feat: 機能追加 - Fixes #123"
-
-# PRを作成（自動的にIssueとリンク）
-gh pr create --title "PR Title - Fixes #123"
-```
-
-#### Issueの書き方
-
-- **概要**: 問題の簡潔な説明
-- **現状の問題点**: 具体的な問題
-- **提案する解決策**: 実装方針
-- **期待される効果**: 改善される点
-
-### 2. 実装計画の立案
-
-### 2. コミット管理
-
-効果的なバージョン管理のための規則：
-
-#### コミットの粒度
+### コミット管理
 
 - **小さな単位**でコミットする（1つの機能追加、1つのバグ修正）
 - **動作する状態**でコミットすることを心がける
-- **関連性のない変更**は別々のコミットに分ける
-
-#### コミットメッセージ
-
-```bash
-# 推奨フォーマット
-git commit -m "feat: ユーザー認証APIの実装
-
-- JWT認証の仕組みを追加
-- ログイン/ログアウト機能を実装
-- 認証エラーハンドリングを追加
-
-Closes #123"
-
-# 重要：コミット後は必ずプッシュ
-git push origin main
-```
-
-#### Issue紐付け
-
-- コミットメッセージに `Closes #<issue番号>` または `Fixes #<issue番号>` を記載
-- 進行中の作業には `Refs #<issue番号>` を使用
-
-#### プッシュ忘れ防止
-
 - **すべてのコミット後に即座にプッシュする**
-- ローカルのみの変更は他の環境で参照できないため必須
 
-### 3. テスト駆動開発
-
-品質確保のためのテスト戦略：
-
-#### テスタブルな関数設計
-
-```javascript
-// Good: 純粋関数、テストしやすい
-function calculateTax(price, taxRate) {
-  return price * taxRate;
-}
-
-// Good: 依存性注入でテストしやすい
-function processOrder(order, paymentService, emailService) {
-  // 処理ロジック
-}
-```
-
-#### テスト実行の習慣
+#### コミットメッセージフォーマット
 
 ```bash
-# 開発中の継続的テスト実行
-npm test -- --watch
+git commit -m "feat: 機能の説明
 
-# コミット前の全テスト実行
-npm test
-npm run test:coverage
-```
+- 具体的な変更点1
+- 具体的な変更点2
 
-#### テストカバレッジ目安
+🤖 Generated with [Claude Code](https://claude.ai/code)
 
-- **最低限**: 70%以上
-- **推奨**: 80%以上
-- **重要な関数**: 100%
-
-### 4. プルリクエスト自動化
-
-効率的なコードレビュープロセス：
-
-#### PR作成のタイミング
-
-- 機能実装が**おおよそ完了**した段階
-- テストが**通っている**状態
-- **自己レビュー**を完了した後
-
-#### PR自動化ツール例
-
-```bash
-# GitHub CLI使用例
-gh pr create --title "feat: ユーザー認証機能" --body-file pr_template.md
-
-# 自動化スクリプト例
-#!/bin/bash
-git push origin feature/user-auth
-gh pr create --title "$(git log -1 --pretty=%s)" --body "$(git log -1 --pretty=%b)"
-```
-
-### 5. CI/CDパイプライン
-
-継続的インテグレーションの管理：
-
-#### チェック項目
-
-- [ ] **テスト実行**: 全テストケースの実行
-- [ ] **Lint検査**: コードスタイルの統一
-- [ ] **型チェック**: TypeScript等の型安全性確認
-- [ ] **セキュリティ検査**: 脆弱性スキャン
-- [ ] **ビルド確認**: 本番環境でのビルド成功
-
-#### 失敗時の対応手順
-
-1. **CIログ確認**: エラー内容の特定
-2. **ローカル修正**: 問題の修正とテスト
-3. **Re-push**: 修正内容のプッシュ
-4. **CI再実行**: パイプラインの再確認
-5. **完了まで繰り返し**: 全チェックが通るまで継続
-
-```bash
-# CI失敗時の修正例
-git add .
-git commit -m "fix: CIエラーの修正 - lint警告の解消"
-git push origin feature/user-auth
+Co-Authored-By: Claude <noreply@anthropic.com>"
 ```

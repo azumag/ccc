@@ -534,7 +534,7 @@ export class ClaudeDiscordBot {
       for (let i = 0; i < formattedResponses.length; i++) {
         const formattedResponse = formattedResponses[i];
         this.logger.info(`[CLAUDE-STEP 12.${i+1}] Sending response ${i+1}/${formattedResponses.length} [Instance: ${instanceId}]`);
-        if ("send" in message.channel) {
+        if ("send" in message.channel && formattedResponse) {
           await message.channel.send(formattedResponse);
           this.logger.info(`[CLAUDE-STEP 12.${i+1}] Response ${i+1} sent successfully [Instance: ${instanceId}]`);
         }

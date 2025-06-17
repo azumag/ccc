@@ -251,7 +251,7 @@ export class ClaudeDiscordBot {
       const success = await this.tmuxManager.sendCommand(message.content);
       
       if (success) {
-        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        const _duration = ((Date.now() - startTime) / 1000).toFixed(1);
         await thinkingMessage.delete();
         await message.react('👀');
         

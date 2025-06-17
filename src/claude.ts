@@ -259,8 +259,10 @@ export class ClaudeCodeExecutor {
     const chunks = this.splitResponse(content, maxLength);
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      const prefix = i === 0 ? "" : `**続き (${i + 1}/${chunks.length})**\n`;
-      messages.push(prefix + this.wrapInCodeBlock(chunk));
+      if (chunk) {
+        const prefix = i === 0 ? "" : `**続き (${i + 1}/${chunks.length})**\n`;
+        messages.push(prefix + this.wrapInCodeBlock(chunk));
+      }
     }
 
     return messages;
@@ -298,7 +300,7 @@ export class ClaudeCodeExecutor {
   private wrapInCodeBlock(content: string): string {
     // Try to detect language for syntax highlighting
     const language = this.detectLanguage(content);
-    return `\`\`\`${language}\n${content}\n\`\`\``;
+    return `\`\`\`${language || 'text'}\n${content}\n\`\`\``;
   }
 
   /**
@@ -335,6 +337,6 @@ export class ClaudeCodeExecutor {
     }
 
     // Default to the project language
-    return this.projectContext.language || "";
+    return this.projectContext.language || "text";
   }
 }

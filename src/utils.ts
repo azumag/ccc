@@ -45,7 +45,7 @@ async function getProjectName(rootPath: string): Promise<string> {
     const cargoTomlPath = `${rootPath}/Cargo.toml`;
     const cargoToml = await Deno.readTextFile(cargoTomlPath);
     const nameMatch = cargoToml.match(/name\s*=\s*"([^"]+)"/);
-    if (nameMatch) {
+    if (nameMatch && nameMatch[1]) {
       return nameMatch[1];
     }
   } catch {
