@@ -340,39 +340,59 @@ export class ClaudeDiscordBot {
    * Handle incoming channel messages
    */
   private async handleChannelMessage(message: Message): Promise<void> {
+    const instanceId = Math.random().toString(36).substring(7);
+    
     try {
-      this.logger.info(`[ENTRY] handleChannelMessage called for ${message.author.tag}`);
+      this.logger.info(`[ENTRY] handleChannelMessage called for ${message.author.tag} [Instance: ${instanceId}]`);
+      this.logger.info(`[STEP 1] Starting message processing [Instance: ${instanceId}]`);
       
+      this.logger.info(`[STEP 2] Getting message content [Instance: ${instanceId}]`);
       const content = message.content.trim();
+      this.logger.info(`[STEP 3] Content obtained: "${content.substring(0, 50)}..." [Instance: ${instanceId}]`);
+      
+      this.logger.info(`[STEP 4] Updating stats [Instance: ${instanceId}]`);
       this.stats.messagesProcessed++;
       this.stats.lastActivity = new Date();
+      this.logger.info(`[STEP 5] Stats updated [Instance: ${instanceId}]`);
 
       this.logger.info(
         `Processing message from ${message.author.tag}: ${content.substring(0, 100)}...`,
       );
+      this.logger.info(`[STEP 6] First processing log completed [Instance: ${instanceId}]`);
       this.logger.info(`Full message content: "${content}"`);
+      this.logger.info(`[STEP 7] Full content log completed [Instance: ${instanceId}]`);
 
       // Check for special commands
+      this.logger.info(`[STEP 8] Checking for special commands [Instance: ${instanceId}]`);
       this.logger.info("Checking for special commands...");
+      this.logger.info(`[STEP 9] Special command check started [Instance: ${instanceId}]`);
+      
       const specialCommand = this.specialCommands.find((cmd) => content.startsWith(cmd.name));
+      this.logger.info(`[STEP 10] Special command search completed, found: ${specialCommand ? specialCommand.name : 'none'} [Instance: ${instanceId}]`);
+      
       if (specialCommand) {
-        this.logger.info(`Executing special command: ${specialCommand.name}`);
+        this.logger.info(`[STEP 11] Executing special command: ${specialCommand.name} [Instance: ${instanceId}]`);
         await specialCommand.handler(message);
+        this.logger.info(`[STEP 12] Special command execution completed [Instance: ${instanceId}]`);
         return;
       }
 
+      this.logger.info(`[STEP 11] No special command detected, proceeding to Claude execution [Instance: ${instanceId}]`);
       this.logger.info("No special command detected, proceeding to Claude execution");
+      
+      this.logger.info(`[STEP 12] About to call executeClaudePrompt [Instance: ${instanceId}]`);
       // Handle regular Claude prompt
       await this.executeClaudePrompt(message, content);
-      this.logger.info(`[EXIT] handleChannelMessage completed for ${message.author.tag}`);
+      this.logger.info(`[STEP 13] executeClaudePrompt completed [Instance: ${instanceId}]`);
+      this.logger.info(`[EXIT] handleChannelMessage completed for ${message.author.tag} [Instance: ${instanceId}]`);
     } catch (error) {
-      this.logger.error(`Error in handleChannelMessage: ${error instanceof Error ? error.message : String(error)}`);
-      this.logger.error(`Error stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
+      this.logger.error(`[ERROR] Error in handleChannelMessage [Instance: ${instanceId}]: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`[ERROR] Error stack [Instance: ${instanceId}]: ${error instanceof Error ? error.stack : 'No stack trace'}`);
       
       try {
         await message.reply(`❌ メッセージ処理中にエラーが発生しました: ${error instanceof Error ? error.message : String(error)}`);
       } catch (replyError) {
-        this.logger.error(`Failed to send error reply: ${replyError}`);
+        this.logger.error(`[ERROR] Failed to send error reply [Instance: ${instanceId}]: ${replyError}`);
       }
     }
   }
@@ -381,35 +401,56 @@ export class ClaudeDiscordBot {
    * Execute Claude prompt and respond
    */
   private async executeClaudePrompt(message: Message, prompt: string): Promise<void> {
+    const instanceId = Math.random().toString(36).substring(7);
     let thinkingMessage: Message | null = null;
 
     try {
-      this.logger.info(`Starting Claude execution for message from ${message.author.tag}`);
+      this.logger.info(`[CLAUDE-STEP 1] Starting Claude execution for message from ${message.author.tag} [Instance: ${instanceId}]`);
       
       // Send thinking message
+      this.logger.info(`[CLAUDE-STEP 2] Sending thinking message [Instance: ${instanceId}]`);
       thinkingMessage = await message.reply("🤔 考えています...");
+      this.logger.info(`[CLAUDE-STEP 3] Thinking message sent successfully [Instance: ${instanceId}]`);
       this.logger.debug("Thinking message sent");
 
       // Execute Claude prompt
+      this.logger.info(`[CLAUDE-STEP 4] About to execute Claude prompt [Instance: ${instanceId}]`);
       this.logger.info(`Executing Claude prompt: ${prompt.substring(0, 200)}...`);
+      this.logger.info(`[CLAUDE-STEP 5] Calling claudeExecutor.executePrompt [Instance: ${instanceId}]`);
+      
       const response = await this.claudeExecutor.executePrompt(prompt, message.channel.id);
+      
+      this.logger.info(`[CLAUDE-STEP 6] Claude execution completed [Instance: ${instanceId}]`);
       this.logger.info(`Claude execution completed, success: ${response.success}`);
 
       // Update thinking message
+      this.logger.info(`[CLAUDE-STEP 7] Deleting thinking message [Instance: ${instanceId}]`);
       await thinkingMessage.delete();
+      this.logger.info(`[CLAUDE-STEP 8] Adding reaction [Instance: ${instanceId}]`);
       await message.react('👀');
+      this.logger.info(`[CLAUDE-STEP 9] Reaction added [Instance: ${instanceId}]`);
 
       // Send response(s)
+      this.logger.info(`[CLAUDE-STEP 10] Formatting responses [Instance: ${instanceId}]`);
       const formattedResponses = this.claudeExecutor.formatResponseForDiscord(response);
-      for (const formattedResponse of formattedResponses) {
+      this.logger.info(`[CLAUDE-STEP 11] Got ${formattedResponses.length} formatted responses [Instance: ${instanceId}]`);
+      
+      for (let i = 0; i < formattedResponses.length; i++) {
+        const formattedResponse = formattedResponses[i];
+        this.logger.info(`[CLAUDE-STEP 12.${i+1}] Sending response ${i+1}/${formattedResponses.length} [Instance: ${instanceId}]`);
         if ("send" in message.channel) {
           await message.channel.send(formattedResponse);
+          this.logger.info(`[CLAUDE-STEP 12.${i+1}] Response ${i+1} sent successfully [Instance: ${instanceId}]`);
         }
       }
 
+      this.logger.info(`[CLAUDE-STEP 13] Updating stats [Instance: ${instanceId}]`);
       this.stats.commandsExecuted++;
+      this.logger.info(`[CLAUDE-STEP 14] Claude prompt executed successfully in ${response.executionTime}ms [Instance: ${instanceId}]`);
       this.logger.info(`Claude prompt executed successfully in ${response.executionTime}ms`);
     } catch (error) {
+      this.logger.error(`[CLAUDE-ERROR] Failed to execute Claude prompt [Instance: ${instanceId}]: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`[CLAUDE-ERROR] Error stack [Instance: ${instanceId}]: ${error instanceof Error ? error.stack : 'No stack trace'}`);
       this.logger.error(
         `Failed to execute Claude prompt: ${
           error instanceof Error ? error.message : String(error)
@@ -417,9 +458,11 @@ export class ClaudeDiscordBot {
       );
 
       if (thinkingMessage) {
+        this.logger.info(`[CLAUDE-ERROR] Editing thinking message to show error [Instance: ${instanceId}]`);
         await thinkingMessage.edit("❌ エラーが発生しました");
       }
 
+      this.logger.info(`[CLAUDE-ERROR] Sending error reply [Instance: ${instanceId}]`);
       await message.reply(
         `❌ **エラー**: ${error instanceof Error ? error.message : String(error)}`,
       );

@@ -68,7 +68,7 @@ export async function quickSetup(
 /**
  * Package version
  */
-export const VERSION = "1.10.5";
+export const VERSION = "1.10.6";
 
 /**
  * Package information
