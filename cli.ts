@@ -12,7 +12,7 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.16.0";
+const VERSION = "1.17.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -38,6 +38,8 @@ interface BotConfig {
   useDangerouslySkipPermissions?: boolean;
   enableResume?: boolean;
   enableContinue?: boolean;
+  autoCommit?: boolean;
+  autoPush?: boolean;
 }
 
 interface BotStats {
@@ -342,10 +344,12 @@ class ClaudeDiscordBot {
       
       // Create enhanced prompt that instructs Claude to use send-to-discord command
       const projectPrefix = this.config.orchestratorMode ? '/project:orchestrator\n\n' : '';
+      const autoCommitFlag = this.config.autoCommit ? ' --auto-commit' : '';
+      const autoPushFlag = this.config.autoPush ? ' --auto-push' : '';
       const enhancedPrompt = `${projectPrefix}${prompt}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
-claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
+claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}${autoCommitFlag}${autoPushFlag}`;
       
       // Send message to Claude via tmux
       const modeDescription = this.config.orchestratorMode ? 'orchestrator' : 'normal';
@@ -688,7 +692,7 @@ export class ClaudeDiscordBotCLI {
   async run(args: string[]): Promise<void> {
     const parsed = parseArgs(args, {
       string: ["channel", "project", "log-level", "session"],
-      boolean: ["help", "version", "verbose", "ultrathink", "dangerously-permit", "resume", "continue", "orch"],
+      boolean: ["help", "version", "verbose", "ultrathink", "dangerously-permit", "resume", "continue", "orch", "auto-commit", "auto-push"],
       alias: {
         h: "help",
         v: "version",
@@ -761,6 +765,8 @@ ${colors.yellow("OPTIONS:")}
   --resume                 Start Claude with resume mode (-r flag)
   --continue               Start Claude with continue mode (-c flag)
   -o, --orch               Enable orchestrator mode (/project:orchestrator)
+  --auto-commit            Auto commit when task completes
+  --auto-push              Auto push when task completes
   -h, --help              Show this help
   -v, --version           Show version
 
@@ -773,6 +779,7 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot start --resume                 # Start with resume mode
   claude-discord-bot start --continue               # Start with continue mode
   claude-discord-bot start --orch                   # Start with orchestrator mode
+  claude-discord-bot start --auto-commit --auto-push # Start with auto git operations
   claude-discord-bot start --global                 # Start from global directory
   claude-discord-bot status                         # Check bot status
   claude-discord-bot send-to-discord "Hello world"   # Send message to Discord
@@ -1042,7 +1049,7 @@ LOG_LEVEL=info
 
 
 
-  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean, orch?: boolean}): Promise<void> {
+  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean, orch?: boolean, "auto-commit"?: boolean, "auto-push"?: boolean}): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
 
     const projectPath = args.project || Deno.cwd();
@@ -1110,6 +1117,8 @@ LOG_LEVEL=info
       useDangerouslySkipPermissions: args["dangerously-permit"] || false,
       enableResume: args.resume || false,
       enableContinue: args.continue || false,
+      autoCommit: args["auto-commit"] || false,
+      autoPush: args["auto-push"] || false,
     };
 
     console.log(colors.green("🤖 Bot を起動しています..."));
@@ -1157,17 +1166,31 @@ LOG_LEVEL=info
     console.log("更新機能は実装中です");
   }
 
-  private async sendToDiscordCommand(args: {_: unknown[], session?: string}): Promise<void> {
+  private async sendToDiscordCommand(args: {_: unknown[], session?: string, "auto-commit"?: boolean, "auto-push"?: boolean}): Promise<void> {
     const message = (args as {_: unknown[]})._[1] as string;
     const sessionName = args.session || Deno.env.get("TMUX_SESSION_NAME") || "claude-main";
+    const autoCommit = args["auto-commit"] || false;
+    const autoPush = args["auto-push"] || false;
     
     if (!message) {
       console.log(colors.red("❌ メッセージが指定されていません"));
-      console.log("使用方法: claude-discord-bot send-to-discord \"メッセージ内容\" [--session セッション名]");
+      console.log("使用方法: claude-discord-bot send-to-discord \"メッセージ内容\" [--session セッション名] [--auto-commit] [--auto-push]");
       return;
     }
 
     try {
+      // Auto commit if flag is set
+      if (autoCommit) {
+        console.log(colors.yellow("🔄 Auto-commit実行中..."));
+        await this.executeAutoCommit();
+      }
+
+      // Auto push if flag is set
+      if (autoPush) {
+        console.log(colors.yellow("📤 Auto-push実行中..."));
+        await this.executeAutoPush();
+      }
+
       // Write message to pending file for active bot to pick up
       const pendingMessage = {
         content: message,
@@ -1181,6 +1204,80 @@ LOG_LEVEL=info
       console.log(colors.green(`✅ メッセージをDiscordに送信キューに追加しました (セッション: ${sessionName})`));
     } catch (error) {
       console.log(colors.red(`❌ メッセージの送信に失敗しました: ${error}`));
+    }
+  }
+
+  private async executeAutoCommit(): Promise<void> {
+    try {
+      // Check git status first
+      const statusCmd = new Deno.Command("git", {
+        args: ["status", "--porcelain"],
+      });
+      const statusProcess = statusCmd.spawn();
+      const statusResult = await statusProcess.status;
+      
+      if (!statusResult.success) {
+        console.log(colors.yellow("⚠️ Gitリポジトリが見つかりません"));
+        return;
+      }
+
+      // Get output directly from the command
+      const outputCmd = new Deno.Command("git", {
+        args: ["status", "--porcelain"],
+        stdout: "piped"
+      });
+      const outputProcess = outputCmd.spawn();
+      const outputBytes = await outputProcess.output();
+      const output = new TextDecoder().decode(outputBytes.stdout);
+      
+      if (!output.trim()) {
+        console.log(colors.yellow("⚠️ コミットする変更がありません"));
+        return;
+      }
+
+      // Add all changes
+      const addCmd = new Deno.Command("git", {
+        args: ["add", "."],
+      });
+      const addProcess = addCmd.spawn();
+      await addProcess.status;
+
+      // Create commit
+      const commitCmd = new Deno.Command("git", {
+        args: ["commit", "-m", `task: Auto commit on task completion
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>`],
+      });
+      const commitProcess = commitCmd.spawn();
+      const commitResult = await commitProcess.status;
+
+      if (commitResult.success) {
+        console.log(colors.green("✅ Auto-commit完了"));
+      } else {
+        console.log(colors.red("❌ Auto-commit失敗"));
+      }
+    } catch (error) {
+      console.log(colors.red(`❌ Auto-commit中にエラー: ${error}`));
+    }
+  }
+
+  private async executeAutoPush(): Promise<void> {
+    try {
+      const pushCmd = new Deno.Command("git", {
+        args: ["push"],
+      });
+      const pushProcess = pushCmd.spawn();
+      const pushResult = await pushProcess.status;
+
+      if (pushResult.success) {
+        console.log(colors.green("✅ Auto-push完了"));
+      } else {
+        console.log(colors.red("❌ Auto-push失敗"));
+      }
+    } catch (error) {
+      console.log(colors.red(`❌ Auto-push中にエラー: ${error}`));
     }
   }
 }

@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.16.0";
+const VERSION = "1.17.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -39,6 +39,8 @@ interface BotConfig {
   useDangerouslySkipPermissions?: boolean;
   enableResume?: boolean;
   enableContinue?: boolean;
+  autoCommit?: boolean;
+  autoPush?: boolean;
 }
 
 interface BotStats {
@@ -78,11 +80,9 @@ class SimpleLogger {
 
 class SimpleTmuxManager {
   public workingDir?: string;
-  private useDangerouslySkipPermissions: boolean;
   
-  constructor(private sessionName: string, private logger: SimpleLogger, workingDir?: string, useDangerouslySkipPermissions = false) {
+  constructor(private sessionName: string, private logger: SimpleLogger, workingDir?: string) {
     this.workingDir = workingDir;
-    this.useDangerouslySkipPermissions = useDangerouslySkipPermissions;
   }
 
   async createSession(): Promise<boolean> {
@@ -100,10 +100,7 @@ class SimpleTmuxManager {
       
       if (status.success) {
         // Start Claude Code in the session
-        const claudeCommand = this.useDangerouslySkipPermissions 
-          ? "claude --dangerously-skip-permissions" 
-          : "claude";
-        await this.sendCommand(claudeCommand);
+        await this.sendCommand("claude --dangerously-skip-permissions");
         this.logger.info("Claude Code session started successfully");
         
         // Setup Discord helper script will be done in bot initialization
@@ -125,7 +122,7 @@ class SimpleTmuxManager {
 
       // Send command text first
       const commandCmd = new Deno.Command("tmux", {
-        args: ["send-keys", "-t", this.sessionName, "--", cleanCommand],
+        args: ["send-keys", "-t", this.sessionName, cleanCommand],
       });
 
       const commandProcess = commandCmd.spawn();
@@ -182,7 +179,6 @@ class ClaudeDiscordBot {
   private logger: SimpleLogger;
   private targetChannelId = "";
   private stats: BotStats;
-  private instanceId: string;
   
   // Message buffering configuration
   private messageBuffer: Map<string, { 
@@ -199,11 +195,9 @@ class ClaudeDiscordBot {
   private readonly MAX_BUFFER_SIZE = 100; // Maximum messages to buffer before forcing execution
 
   constructor(config: BotConfig, workingDir?: string) {
-    this.instanceId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     this.config = config;
     this.logger = new SimpleLogger(config.logLevel);
-    this.logger.info(`[INSTANCE] Bot instance created with ID: ${this.instanceId}`);
-    this.tmuxManager = new SimpleTmuxManager(config.tmuxSessionName, this.logger, workingDir, config.useDangerouslySkipPermissions || false);
+    this.tmuxManager = new SimpleTmuxManager(config.tmuxSessionName, this.logger, workingDir);
     this.tmuxManager.workingDir = workingDir;
 
     this.client = new Client({
@@ -283,72 +277,31 @@ class ClaudeDiscordBot {
   }
 
   private async handleMessage(message: Message): Promise<void> {
-    try {
-      this.logger.info(`[ENTRY] [${this.instanceId}] handleMessage called for ${message.author.tag}`);
-      this.logger.info(`[STEP 1] [${this.instanceId}] Message received processing`);
-      this.logger.debug(`Message received from ${message.author.tag} (${message.author.id}) in channel ${message.channelId}, bot: ${message.author.bot}, webhook: ${message.webhookId ? 'true' : 'false'}`);
-      
-      this.logger.info(`[STEP 2] Checking if message is from self`);
-      // Skip messages from this bot itself
-      if (message.author.id === this.client.user?.id) {
-        this.logger.debug(`Skipping message from self: ${message.author.id}`);
-        return;
-      }
+    // Skip bot messages
+    if (message.author.bot) return;
 
-      this.logger.info(`[STEP 3] Checking target channel`);
-      // Check if message is in target channel
-      if (message.channelId !== this.targetChannelId) {
-        this.logger.debug(`Message not in target channel. Expected: ${this.targetChannelId}, Got: ${message.channelId}`);
-        return;
-      }
+    // Check if message is in target channel
+    if (message.channelId !== this.targetChannelId) return;
 
-      this.logger.info(`[STEP 4] About to log processing message`);
-      this.logger.info(`Processing message from ${message.author.tag} (webhook: ${message.webhookId ? 'yes' : 'no'}): ${message.content.substring(0, 100)}...`);
-      this.logger.info(`[STEP 5] Processing message logged successfully`);
-
-      this.logger.info(`[STEP 6] Checking authorization`);
-      // Check authorization if configured (skip for webhook messages)
-      if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId && !message.webhookId) {
-        this.logger.debug(`Unauthorized user: ${message.author.tag}`);
-        return;
-      }
-      
-      // Log webhook authorization bypass
-      if (message.webhookId && this.config.authorizedUserId) {
-        this.logger.info(`Webhook message detected - bypassing authorization for ${message.author.tag}`);
-      }
-
-      this.logger.info(`[STEP 7] About to log full message content`);
-      this.logger.info(`Full message content: "${message.content}"`);
-      this.logger.info(`[STEP 8] Full message content logged successfully`);
-      
-      this.logger.info(`[STEP 9] Checking for special commands`);
-      // Handle special commands
-      this.logger.info("Checking for special commands...");
-      if (message.content.startsWith("/")) {
-        this.logger.info(`Executing special command: ${message.content}`);
-        await this.handleSpecialCommand(message);
-        return;
-      }
-
-      this.logger.info(`[STEP 10] No special command detected, proceeding to Claude execution`);
-      this.logger.info("No special command detected, proceeding to Claude execution");
-      
-      this.logger.info(`[STEP 11] About to add message to buffer`);
-      // Add message to buffer for processing
-      await this.addMessageToBuffer(message);
-      this.logger.info(`[STEP 12] Message added to buffer`);
-      this.logger.info(`[EXIT] handleMessage completed for ${message.author.tag}`);
-    } catch (error) {
-      this.logger.error(`[ERROR] Error in handleMessage: ${error instanceof Error ? error.message : String(error)}`);
-      this.logger.error(`[ERROR] Error stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
-      
-      try {
-        await message.reply(`❌ メッセージ処理中にエラーが発生しました: ${error instanceof Error ? error.message : String(error)}`);
-      } catch (replyError) {
-        this.logger.error(`[ERROR] Failed to send error reply: ${replyError}`);
-      }
+    // Check authorization if configured (skip for webhook messages)
+    if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId && !message.webhookId) {
+      this.logger.debug(`Unauthorized user: ${message.author.tag}`);
+      return;
     }
+    
+    // Log webhook authorization bypass
+    if (message.webhookId && this.config.authorizedUserId) {
+      this.logger.info(`Webhook message detected - bypassing authorization for ${message.author.tag}`);
+    }
+
+    // Handle special commands
+    if (message.content.startsWith("/")) {
+      await this.handleSpecialCommand(message);
+      return;
+    }
+
+    // Add message to buffer for processing
+    await this.addMessageToBuffer(message);
   }
 
   private async handleSpecialCommand(message: Message): Promise<void> {
@@ -381,31 +334,26 @@ class ClaudeDiscordBot {
     }
     
     try {
-      this.logger.info(`Starting Claude execution for message from ${message.author.tag}`);
-      
       // Send thinking indicator
       const thinkingMessage = await message.reply("🤔 考えています...");
-      this.logger.debug("Thinking message sent");
       
       const startTime = Date.now();
       
       
       // Create enhanced prompt that instructs Claude to use send-to-discord command
       const projectPrefix = this.config.orchestratorMode ? '/project:orchestrator\n\n' : '';
-      const ultrathinkText = this.config.enableUltraThink ? '\n\nultrathink\n' : '';
-      this.logger.debug(`Enhanced prompt created with ultrathink: ${this.config.enableUltraThink}, orchestrator: ${this.config.orchestratorMode}`);
-      
-      const enhancedPrompt = `${projectPrefix}${prompt}${ultrathinkText}
+      const autoCommitFlag = this.config.autoCommit ? ' --auto-commit' : '';
+      const autoPushFlag = this.config.autoPush ? ' --auto-push' : '';
+      const enhancedPrompt = `${projectPrefix}${prompt}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
-claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
+claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}${autoCommitFlag}${autoPushFlag}`;
       
       // Send message to Claude via tmux
       const modeDescription = this.config.orchestratorMode ? 'orchestrator' : 'normal';
       this.logger.info(`Sending ${isBufferedPrompt ? 'buffered' : 'single'} prompt (${modeDescription} mode) to tmux session: ${this.config.tmuxSessionName}`);
       this.logger.debug(`Enhanced prompt to send: ${enhancedPrompt.substring(0, 300)}...`);
       const success = await this.tmuxManager.sendCommand(enhancedPrompt);
-      this.logger.info(`Prompt sent to tmux, success: ${success}`);
       
       if (success) {
         const _duration = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -742,7 +690,7 @@ export class ClaudeDiscordBotCLI {
   async run(args: string[]): Promise<void> {
     const parsed = parseArgs(args, {
       string: ["channel", "project", "log-level", "session"],
-      boolean: ["help", "version", "verbose", "global", "ultrathink", "dangerously-permit", "resume", "continue", "orch"],
+      boolean: ["help", "version", "verbose", "global", "ultrathink", "dangerously-permit", "resume", "continue", "orch", "auto-commit", "auto-push"],
       alias: {
         h: "help",
         v: "version",
@@ -773,13 +721,13 @@ export class ClaudeDiscordBotCLI {
         await this.startCommand(parsed);
         break;
       case "status":
-        this.statusCommand();
+        await this.statusCommand();
         break;
       case "stop":
-        this.stopCommand();
+        await this.stopCommand();
         break;
       case "update":
-        this.updateCommand();
+        await this.updateCommand();
         break;
       case "send-to-discord":
         await this.sendToDiscordCommand(parsed);
@@ -815,6 +763,8 @@ ${colors.yellow("OPTIONS:")}
   --resume                 Start Claude with resume mode (-r flag)
   --continue               Start Claude with continue mode (-c flag)
   -o, --orch               Enable orchestrator mode (/project:orchestrator)
+  --auto-commit            Auto commit when task completes
+  --auto-push              Auto push when task completes
   -h, --help              Show this help
   -v, --version           Show version
 
@@ -827,6 +777,7 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot start --resume                 # Start with resume mode
   claude-discord-bot start --continue               # Start with continue mode
   claude-discord-bot start --orch                   # Start with orchestrator mode
+  claude-discord-bot start --auto-commit --auto-push # Start with auto git operations
   claude-discord-bot start --global                 # Start from global directory
   claude-discord-bot status                         # Check bot status
   claude-discord-bot send-to-discord "Hello world"   # Send message to Discord
@@ -1093,7 +1044,7 @@ LOG_LEVEL=info
     return existingContent ? existingContent + claudeBotSection : claudeBotSection.trim();
   }
 
-  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean, orch?: boolean}): Promise<void> {
+  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean, orch?: boolean, "auto-commit"?: boolean, "auto-push"?: boolean}): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
 
     const projectPath = args.project || Deno.cwd();
@@ -1143,7 +1094,7 @@ LOG_LEVEL=info
     for (const varName of requiredVars) {
       if (!Deno.env.get(varName)) {
         console.log(colors.red(`❌ 必須環境変数が設定されていません: ${varName}`));
-        console.log("設定ファイルを確認してください");
+        console.log("まず 'claude-discord-bot init' を実行して設定を完了してください");
         return;
       }
     }
@@ -1152,7 +1103,7 @@ LOG_LEVEL=info
     const config: BotConfig = {
       discordToken: Deno.env.get("DISCORD_BOT_TOKEN")!,
       guildId: Deno.env.get("GUILD_ID")!,
-      authorizedUserId: Deno.env.get("AUTHORIZED_USER_ID") || undefined,
+      authorizedUserId: Deno.env.get("AUTHORIZED_USER_ID"),
       channelName: Deno.env.get("DISCORD_CHANNEL_NAME") || "claude",
       tmuxSessionName: Deno.env.get("TMUX_SESSION_NAME") || "claude-main",
       logLevel: Deno.env.get("LOG_LEVEL") || "info",
@@ -1161,6 +1112,8 @@ LOG_LEVEL=info
       useDangerouslySkipPermissions: args["dangerously-permit"] || false,
       enableResume: args.resume || false,
       enableContinue: args.continue || false,
+      autoCommit: args["auto-commit"] || false,
+      autoPush: args["auto-push"] || false,
     };
 
     console.log(colors.green("🤖 Bot を起動しています..."));
@@ -1183,6 +1136,7 @@ LOG_LEVEL=info
         Deno.exit(0);
       };
 
+      // Handle Ctrl+C
       Deno.addSignalListener("SIGINT", shutdown);
       Deno.addSignalListener("SIGTERM", shutdown);
 
@@ -1192,44 +1146,127 @@ LOG_LEVEL=info
     }
   }
 
-  private statusCommand(): void {
+  private async statusCommand(): Promise<void> {
     console.log(colors.cyan("📊 Claude Discord Bot ステータス"));
     console.log("ステータス確認機能は実装中です");
   }
 
-  private stopCommand(): void {
+  private async stopCommand(): Promise<void> {
     console.log(colors.yellow("⏹️  Claude Discord Bot 停止中..."));
     console.log("停止機能は実装中です");
   }
 
-  private updateCommand(): void {
+  private async updateCommand(): Promise<void> {
     console.log(colors.cyan("📦 CLI更新確認中..."));
     console.log("更新機能は実装中です");
   }
 
-  private async sendToDiscordCommand(args: {_: unknown[], session?: string}): Promise<void> {
+  private async sendToDiscordCommand(args: {_: unknown[], session?: string, "auto-commit"?: boolean, "auto-push"?: boolean}): Promise<void> {
     const message = (args as {_: unknown[]})._[1] as string;
     const sessionName = args.session || Deno.env.get("TMUX_SESSION_NAME") || "claude-main";
+    const autoCommit = args["auto-commit"] || false;
+    const autoPush = args["auto-push"] || false;
     
     if (!message) {
       console.log(colors.red("❌ メッセージが指定されていません"));
-      console.log("使用方法: claude-discord-bot send-to-discord \"メッセージ内容\" [--session セッション名]");
+      console.log("使用方法: claude-discord-bot send-to-discord \"メッセージ内容\" [--session セッション名] [--auto-commit] [--auto-push]");
       return;
     }
 
     try {
-      // Create temporary file with message data
-      const pendingFile = `/tmp/claude-discord-pending-${sessionName}.json`;
-      const messageData = {
-        type: "response",
+      // Auto commit if flag is set
+      if (autoCommit) {
+        console.log(colors.yellow("🔄 Auto-commit実行中..."));
+        await this.executeAutoCommit();
+      }
+
+      // Auto push if flag is set
+      if (autoPush) {
+        console.log(colors.yellow("📤 Auto-push実行中..."));
+        await this.executeAutoPush();
+      }
+
+      // Write message to pending file for active bot to pick up
+      const pendingMessage = {
         content: message,
         timestamp: new Date().toISOString(),
+        type: "claude-response"
       };
 
-      await Deno.writeTextFile(pendingFile, JSON.stringify(messageData));
-      console.log(colors.green(`✅ メッセージをDiscordに送信キューに追加しました: ${message.substring(0, 50)}...`));
+      const pendingFile = `/tmp/claude-discord-pending-${sessionName}.json`;
+      
+      await Deno.writeTextFile(pendingFile, JSON.stringify(pendingMessage, null, 2));
+      console.log(colors.green(`✅ メッセージをDiscordに送信キューに追加しました (セッション: ${sessionName})`));
     } catch (error) {
       console.log(colors.red(`❌ メッセージの送信に失敗しました: ${error}`));
+    }
+  }
+
+  private async executeAutoCommit(): Promise<void> {
+    try {
+      // Get output directly from the command
+      const outputCmd = new Deno.Command("git", {
+        args: ["status", "--porcelain"],
+        stdout: "piped"
+      });
+      const outputProcess = outputCmd.spawn();
+      const outputBytes = await outputProcess.output();
+      
+      if (!outputBytes.success) {
+        console.log(colors.yellow("⚠️ Gitリポジトリが見つかりません"));
+        return;
+      }
+
+      // Check if there are changes to commit
+      const output = new TextDecoder().decode(outputBytes.stdout);
+      if (!output.trim()) {
+        console.log(colors.yellow("⚠️ コミットする変更がありません"));
+        return;
+      }
+
+      // Add all changes
+      const addCmd = new Deno.Command("git", {
+        args: ["add", "."],
+      });
+      const addProcess = addCmd.spawn();
+      await addProcess.status;
+
+      // Create commit
+      const commitCmd = new Deno.Command("git", {
+        args: ["commit", "-m", `task: Auto commit on task completion
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>`],
+      });
+      const commitProcess = commitCmd.spawn();
+      const commitResult = await commitProcess.status;
+
+      if (commitResult.success) {
+        console.log(colors.green("✅ Auto-commit完了"));
+      } else {
+        console.log(colors.red("❌ Auto-commit失敗"));
+      }
+    } catch (error) {
+      console.log(colors.red(`❌ Auto-commit中にエラー: ${error}`));
+    }
+  }
+
+  private async executeAutoPush(): Promise<void> {
+    try {
+      const pushCmd = new Deno.Command("git", {
+        args: ["push"],
+      });
+      const pushProcess = pushCmd.spawn();
+      const pushResult = await pushProcess.status;
+
+      if (pushResult.success) {
+        console.log(colors.green("✅ Auto-push完了"));
+      } else {
+        console.log(colors.red("❌ Auto-push失敗"));
+      }
+    } catch (error) {
+      console.log(colors.red(`❌ Auto-push中にエラー: ${error}`));
     }
   }
 }
