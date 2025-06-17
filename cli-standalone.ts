@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.15.0";
+const VERSION = "1.16.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -23,6 +23,7 @@ interface CLIConfig {
   authorizedUserId?: string;
   tmuxSessionName: string;
   logLevel: string;
+  orchestratorMode?: boolean;
 }
 
 // Bot interfaces
@@ -34,6 +35,7 @@ interface BotConfig {
   tmuxSessionName: string;
   logLevel: string;
   enableUltraThink?: boolean;
+  orchestratorMode?: boolean;
   useDangerouslySkipPermissions?: boolean;
   enableResume?: boolean;
   enableContinue?: boolean;
@@ -389,16 +391,18 @@ class ClaudeDiscordBot {
       
       
       // Create enhanced prompt that instructs Claude to use send-to-discord command
+      const projectPrefix = this.config.orchestratorMode ? '/project:orchestrator\n\n' : '';
       const ultrathinkText = this.config.enableUltraThink ? '\n\nultrathink\n' : '';
-      this.logger.debug(`Enhanced prompt created with ultrathink: ${this.config.enableUltraThink}`);
+      this.logger.debug(`Enhanced prompt created with ultrathink: ${this.config.enableUltraThink}, orchestrator: ${this.config.orchestratorMode}`);
       
-      const enhancedPrompt = `${prompt}${ultrathinkText}
+      const enhancedPrompt = `${projectPrefix}${prompt}${ultrathinkText}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
       
       // Send message to Claude via tmux
-      this.logger.info(`Sending ${isBufferedPrompt ? 'buffered' : 'single'} prompt to tmux session: ${this.config.tmuxSessionName}`);
+      const modeDescription = this.config.orchestratorMode ? 'orchestrator' : 'normal';
+      this.logger.info(`Sending ${isBufferedPrompt ? 'buffered' : 'single'} prompt (${modeDescription} mode) to tmux session: ${this.config.tmuxSessionName}`);
       this.logger.debug(`Enhanced prompt to send: ${enhancedPrompt.substring(0, 300)}...`);
       const success = await this.tmuxManager.sendCommand(enhancedPrompt);
       this.logger.info(`Prompt sent to tmux, success: ${success}`);
@@ -738,13 +742,14 @@ export class ClaudeDiscordBotCLI {
   async run(args: string[]): Promise<void> {
     const parsed = parseArgs(args, {
       string: ["channel", "project", "log-level", "session"],
-      boolean: ["help", "version", "verbose", "global", "ultrathink", "dangerously-permit", "resume", "continue"],
+      boolean: ["help", "version", "verbose", "global", "ultrathink", "dangerously-permit", "resume", "continue", "orch"],
       alias: {
         h: "help",
         v: "version",
         c: "channel",
         p: "project",
         s: "session",
+        o: "orch",
       },
     });
 
@@ -809,6 +814,7 @@ ${colors.yellow("OPTIONS:")}
   --dangerously-permit     Use --dangerously-skip-permissions for Claude
   --resume                 Start Claude with resume mode (-r flag)
   --continue               Start Claude with continue mode (-c flag)
+  -o, --orch               Enable orchestrator mode (/project:orchestrator)
   -h, --help              Show this help
   -v, --version           Show version
 
@@ -820,6 +826,7 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot start --dangerously-permit     # Start with permissions bypassed
   claude-discord-bot start --resume                 # Start with resume mode
   claude-discord-bot start --continue               # Start with continue mode
+  claude-discord-bot start --orch                   # Start with orchestrator mode
   claude-discord-bot start --global                 # Start from global directory
   claude-discord-bot status                         # Check bot status
   claude-discord-bot send-to-discord "Hello world"   # Send message to Discord
@@ -1086,7 +1093,7 @@ LOG_LEVEL=info
     return existingContent ? existingContent + claudeBotSection : claudeBotSection.trim();
   }
 
-  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean}): Promise<void> {
+  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean, orch?: boolean}): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
 
     const projectPath = args.project || Deno.cwd();
@@ -1150,6 +1157,7 @@ LOG_LEVEL=info
       tmuxSessionName: Deno.env.get("TMUX_SESSION_NAME") || "claude-main",
       logLevel: Deno.env.get("LOG_LEVEL") || "info",
       enableUltraThink: args.ultrathink || false,
+      orchestratorMode: args.orch || false,
       useDangerouslySkipPermissions: args["dangerously-permit"] || false,
       enableResume: args.resume || false,
       enableContinue: args.continue || false,
