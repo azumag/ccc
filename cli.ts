@@ -12,7 +12,7 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.10.6";
+const VERSION = "1.10.7";
 
 interface CLIConfig {
   projectPath: string;
@@ -265,10 +265,15 @@ class ClaudeDiscordBot {
     // Check if message is in target channel
     if (message.channelId !== this.targetChannelId) return;
 
-    // Check authorization if configured
-    if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId) {
+    // Check authorization if configured (skip for webhook messages)
+    if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId && !message.webhookId) {
       this.logger.debug(`Unauthorized user: ${message.author.tag}`);
       return;
+    }
+    
+    // Log webhook authorization bypass
+    if (message.webhookId && this.config.authorizedUserId) {
+      this.logger.info(`Webhook message detected - bypassing authorization for ${message.author.tag}`);
     }
 
     // Handle special commands
