@@ -166,10 +166,20 @@ export class ClaudeDiscordBot {
     });
 
     this.client.on("messageCreate", async (message) => {
+      this.logger.debug(`Message received from ${message.author.tag} (${message.author.id}) in channel ${message.channel.id}, bot: ${message.author.bot}, webhook: ${message.webhookId ? 'true' : 'false'}`);
+      
       // Skip messages from this bot itself
-      if (message.author.id === this.client.user?.id) return;
-      if (message.channel.id !== this.targetChannelId) return;
+      if (message.author.id === this.client.user?.id) {
+        this.logger.debug(`Skipping message from self: ${message.author.id}`);
+        return;
+      }
+      
+      if (message.channel.id !== this.targetChannelId) {
+        this.logger.debug(`Message not in target channel. Expected: ${this.targetChannelId}, Got: ${message.channel.id}`);
+        return;
+      }
 
+      this.logger.info(`Processing message from ${message.author.tag} (webhook: ${message.webhookId ? 'yes' : 'no'}): ${message.content.substring(0, 100)}...`);
       await this.handleChannelMessage(message);
     });
 

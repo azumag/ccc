@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.10.0";
+const VERSION = "1.10.1";
 
 interface CLIConfig {
   projectPath: string;
@@ -262,11 +262,21 @@ class ClaudeDiscordBot {
   }
 
   private async handleMessage(message: Message): Promise<void> {
+    this.logger.debug(`Message received from ${message.author.tag} (${message.author.id}) in channel ${message.channelId}, bot: ${message.author.bot}, webhook: ${message.webhookId ? 'true' : 'false'}`);
+    
     // Skip messages from this bot itself
-    if (message.author.id === this.client.user?.id) return;
+    if (message.author.id === this.client.user?.id) {
+      this.logger.debug(`Skipping message from self: ${message.author.id}`);
+      return;
+    }
 
     // Check if message is in target channel
-    if (message.channelId !== this.targetChannelId) return;
+    if (message.channelId !== this.targetChannelId) {
+      this.logger.debug(`Message not in target channel. Expected: ${this.targetChannelId}, Got: ${message.channelId}`);
+      return;
+    }
+
+    this.logger.info(`Processing message from ${message.author.tag} (webhook: ${message.webhookId ? 'yes' : 'no'}): ${message.content.substring(0, 100)}...`);
 
     // Check authorization if configured
     if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId) {
