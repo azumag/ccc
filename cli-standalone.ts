@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.10.2";
+const VERSION = "1.10.3";
 
 interface CLIConfig {
   projectPath: string;
@@ -284,12 +284,16 @@ class ClaudeDiscordBot {
       return;
     }
 
+    this.logger.debug(`Full message content: "${message.content}"`);
+    
     // Handle special commands
     if (message.content.startsWith("/")) {
+      this.logger.info(`Executing special command: ${message.content}`);
       await this.handleSpecialCommand(message);
       return;
     }
 
+    this.logger.info("No special command detected, proceeding to Claude execution");
     // Process regular message
     await this.processMessage(message);
   }

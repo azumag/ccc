@@ -347,14 +347,17 @@ export class ClaudeDiscordBot {
     this.logger.info(
       `Processing message from ${message.author.tag}: ${content.substring(0, 100)}...`,
     );
+    this.logger.debug(`Full message content: "${content}"`);
 
     // Check for special commands
     const specialCommand = this.specialCommands.find((cmd) => content.startsWith(cmd.name));
     if (specialCommand) {
+      this.logger.info(`Executing special command: ${specialCommand.name}`);
       await specialCommand.handler(message);
       return;
     }
 
+    this.logger.info("No special command detected, proceeding to Claude execution");
     // Handle regular Claude prompt
     await this.executeClaudePrompt(message, content);
   }
