@@ -37,6 +37,9 @@ CLIツールの修正・機能追加時は必ずバージョンを更新する�
 # ビルド・インストール
 /Users/azumag/.deno/bin/deno compile --allow-all --output ./bin/claude-discord-bot cli.ts
 /Users/azumag/.deno/bin/deno install --global --allow-all --config deno.json -f -n claude-discord-bot cli.ts
+
+# 必須：リモートにプッシュ
+git push origin main
 ```
 
 ## CLI ファイル同期管理
@@ -125,12 +128,20 @@ git commit -m "feat: ユーザー認証APIの実装
 - 認証エラーハンドリングを追加
 
 Closes #123"
+
+# 重要：コミット後は必ずプッシュ
+git push origin main
 ```
 
 #### Issue紐付け
 
 - コミットメッセージに `Closes #<issue番号>` または `Fixes #<issue番号>` を記載
 - 進行中の作業には `Refs #<issue番号>` を使用
+
+#### プッシュ忘れ防止
+
+- **すべてのコミット後に即座にプッシュする**
+- ローカルのみの変更は他の環境で参照できないため必須
 
 ### 3. テスト駆動開発
 
