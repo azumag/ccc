@@ -12,7 +12,7 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.14.0";
+const VERSION = "1.15.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -324,7 +324,12 @@ class ClaudeDiscordBot {
 
   private async processMessage(message: Message, customPrompt?: string): Promise<void> {
     const prompt = customPrompt || message.content;
-    this.logger.info(`Processing message from ${message.author.tag}: ${prompt.substring(0, 100)}...`);
+    const isBufferedPrompt = !!customPrompt;
+    this.logger.info(`Processing ${isBufferedPrompt ? 'buffered' : 'single'} message from ${message.author.tag}: ${prompt.substring(0, 100)}...`);
+    
+    if (isBufferedPrompt) {
+      this.logger.info(`Full buffered prompt preview:\n${prompt.substring(0, 500)}...`);
+    }
     
     try {
       // Send thinking indicator
@@ -340,6 +345,8 @@ class ClaudeDiscordBot {
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
       
       // Send message to Claude via tmux
+      this.logger.info(`Sending ${isBufferedPrompt ? 'buffered' : 'single'} prompt to tmux session: ${this.config.tmuxSessionName}`);
+      this.logger.debug(`Enhanced prompt to send: ${enhancedPrompt.substring(0, 300)}...`);
       const success = await this.tmuxManager.sendCommand(enhancedPrompt);
       
       if (success) {
@@ -474,6 +481,8 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
     }
     
     // Execute combined prompt
+    this.logger.info(`About to execute combined prompt with ${messages.length} messages`);
+    this.logger.debug(`Combined prompt length: ${combinedPrompt.length} characters`);
     await this.processMessage(lastMessage, combinedPrompt);
   }
 
