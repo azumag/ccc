@@ -12,7 +12,7 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.17.0";
+const VERSION = "1.18.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -80,7 +80,7 @@ class SimpleLogger {
 class SimpleTmuxManager {
   public workingDir?: string;
   
-  constructor(private sessionName: string, private logger: SimpleLogger, workingDir?: string) {
+  constructor(private sessionName: string, private logger: SimpleLogger, private config: BotConfig, workingDir?: string) {
     this.workingDir = workingDir;
   }
 
@@ -98,8 +98,30 @@ class SimpleTmuxManager {
       const status = await process.status;
       
       if (status.success) {
+        // Build Claude command with dynamic flags
+        const claudeFlags = [];
+        
+        if (this.config.useDangerouslySkipPermissions) {
+          claudeFlags.push("--dangerously-skip-permissions");
+        }
+        
+        if (this.config.enableUltraThink) {
+          claudeFlags.push("--ultrathink");
+        }
+        
+        if (this.config.enableResume) {
+          claudeFlags.push("-r");
+        }
+        
+        if (this.config.enableContinue) {
+          claudeFlags.push("-c");
+        }
+        
+        const claudeCommand = `claude ${claudeFlags.join(" ")}`.trim();
+        this.logger.info(`Starting Claude Code with command: ${claudeCommand}`);
+        
         // Start Claude Code in the session
-        await this.sendCommand("claude --dangerously-skip-permissions");
+        await this.sendCommand(claudeCommand);
         this.logger.info("Claude Code session started successfully");
         
         // Setup Discord helper script will be done in bot initialization
@@ -196,7 +218,7 @@ class ClaudeDiscordBot {
   constructor(config: BotConfig, workingDir?: string) {
     this.config = config;
     this.logger = new SimpleLogger(config.logLevel);
-    this.tmuxManager = new SimpleTmuxManager(config.tmuxSessionName, this.logger, workingDir);
+    this.tmuxManager = new SimpleTmuxManager(config.tmuxSessionName, this.logger, config, workingDir);
     this.tmuxManager.workingDir = workingDir;
 
     this.client = new Client({
