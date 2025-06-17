@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.12.0";
+const VERSION = "1.13.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -181,6 +181,11 @@ class ClaudeDiscordBot {
   private targetChannelId = "";
   private stats: BotStats;
   private instanceId: string;
+  
+  // Message buffering configuration
+  private messageBuffer: Map<string, { messages: Message[], timer?: number }> = new Map();
+  private readonly BUFFER_TIMEOUT_MS = 120000; // 2 minutes
+  private readonly MAX_BUFFER_SIZE = 10; // Maximum messages to buffer before forcing execution
 
   constructor(config: BotConfig, workingDir?: string) {
     this.instanceId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -318,10 +323,10 @@ class ClaudeDiscordBot {
       this.logger.info(`[STEP 10] No special command detected, proceeding to Claude execution`);
       this.logger.info("No special command detected, proceeding to Claude execution");
       
-      this.logger.info(`[STEP 11] About to call processMessage`);
-      // Process regular message
-      await this.processMessage(message);
-      this.logger.info(`[STEP 12] processMessage completed`);
+      this.logger.info(`[STEP 11] About to add message to buffer`);
+      // Add message to buffer for processing
+      await this.addMessageToBuffer(message);
+      this.logger.info(`[STEP 12] Message added to buffer`);
       this.logger.info(`[EXIT] handleMessage completed for ${message.author.tag}`);
     } catch (error) {
       this.logger.error(`[ERROR] Error in handleMessage: ${error instanceof Error ? error.message : String(error)}`);
@@ -355,8 +360,9 @@ class ClaudeDiscordBot {
     this.stats.commandsExecuted++;
   }
 
-  private async processMessage(message: Message): Promise<void> {
-    this.logger.info(`Processing message from ${message.author.tag}: ${message.content.substring(0, 100)}...`);
+  private async processMessage(message: Message, customPrompt?: string): Promise<void> {
+    const prompt = customPrompt || message.content;
+    this.logger.info(`Processing message from ${message.author.tag}: ${prompt.substring(0, 100)}...`);
     
     try {
       this.logger.info(`Starting Claude execution for message from ${message.author.tag}`);
@@ -372,7 +378,7 @@ class ClaudeDiscordBot {
       const ultrathinkText = this.config.enableUltraThink ? '\n\nultrathink\n' : '';
       this.logger.debug(`Enhanced prompt created with ultrathink: ${this.config.enableUltraThink}`);
       
-      const enhancedPrompt = `${message.content}${ultrathinkText}
+      const enhancedPrompt = `${prompt}${ultrathinkText}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
@@ -399,6 +405,94 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
       this.logger.error(`Error processing message: ${error}`);
       await message.reply("メッセージの処理中にエラーが発生しました。");
     }
+  }
+
+  /**
+   * Add message to buffer and handle buffer processing
+   */
+  private async addMessageToBuffer(message: Message): Promise<void> {
+    const channelId = message.channel.id;
+    
+    // Get or create buffer for this channel
+    let buffer = this.messageBuffer.get(channelId);
+    if (!buffer) {
+      buffer = { messages: [] };
+      this.messageBuffer.set(channelId, buffer);
+    }
+    
+    // Add message to buffer
+    buffer.messages.push(message);
+    this.logger.info(`Added message to buffer. Buffer size: ${buffer.messages.length}`);
+    
+    // Check if buffer is full
+    if (buffer.messages.length >= this.MAX_BUFFER_SIZE) {
+      this.logger.info(`Buffer reached max size (${this.MAX_BUFFER_SIZE}), processing immediately`);
+      await this.processBufferedMessages(channelId);
+      return;
+    }
+    
+    // Clear existing timer
+    if (buffer.timer) {
+      clearTimeout(buffer.timer);
+    }
+    
+    // Set new timer
+    buffer.timer = setTimeout(async () => {
+      this.logger.info(`Buffer timeout reached, processing ${buffer.messages.length} messages`);
+      await this.processBufferedMessages(channelId);
+    }, this.BUFFER_TIMEOUT_MS) as unknown as number;
+    
+    // Send acknowledgment for the first message
+    if (buffer.messages.length === 1) {
+      await message.react('⏳');
+      this.logger.info('Added waiting reaction to first message');
+    }
+  }
+  
+  /**
+   * Process all buffered messages for a channel
+   */
+  private async processBufferedMessages(channelId: string): Promise<void> {
+    const buffer = this.messageBuffer.get(channelId);
+    if (!buffer || buffer.messages.length === 0) {
+      return;
+    }
+    
+    // Clear timer
+    if (buffer.timer) {
+      clearTimeout(buffer.timer);
+      buffer.timer = undefined;
+    }
+    
+    // Get messages and clear buffer
+    const messages = [...buffer.messages];
+    buffer.messages = [];
+    
+    this.logger.info(`Processing ${messages.length} buffered messages`);
+    
+    // Combine all message contents
+    const combinedPrompt = messages.map((msg, index) => {
+      return `[メッセージ ${index + 1} from ${msg.author.username}]: ${msg.content}`;
+    }).join('\n\n');
+    
+    this.logger.info(`Combined prompt:\n${combinedPrompt.substring(0, 500)}...`);
+    
+    // Use the last message for context and replies
+    const lastMessage = messages[messages.length - 1];
+    
+    if (!lastMessage) {
+      this.logger.error('No messages to process in buffer');
+      return;
+    }
+    
+    // Remove waiting reaction from first message
+    const firstMessage = messages[0];
+    if (firstMessage) {
+      await firstMessage.reactions.cache.get('⏳')?.remove().catch(() => {});
+    }
+    
+    // Execute combined prompt
+    await this.processMessage(lastMessage, combinedPrompt);
   }
 
   private async sendStatus(message: Message): Promise<void> {
