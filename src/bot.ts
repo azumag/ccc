@@ -29,6 +29,11 @@ export class ClaudeDiscordBot {
   private stats: BotStats;
   private specialCommands: SpecialCommand[];
   private responseMonitorInterval?: number;
+  
+  // Message buffering configuration
+  private messageBuffer: Map<string, { messages: Message[], timer?: number }> = new Map();
+  private readonly BUFFER_TIMEOUT_MS = 120000; // 2 minutes
+  private readonly MAX_BUFFER_SIZE = 10; // Maximum messages to buffer before forcing execution
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -383,13 +388,12 @@ export class ClaudeDiscordBot {
         return;
       }
 
-      this.logger.info(`[STEP 11] No special command detected, proceeding to Claude execution [Instance: ${instanceId}]`);
-      this.logger.info("No special command detected, proceeding to Claude execution");
+      this.logger.info(`[STEP 11] No special command detected, adding to buffer [Instance: ${instanceId}]`);
+      this.logger.info("No special command detected, adding message to buffer");
       
-      this.logger.info(`[STEP 12] About to call executeClaudePrompt [Instance: ${instanceId}]`);
-      // Handle regular Claude prompt
-      await this.executeClaudePrompt(message, content);
-      this.logger.info(`[STEP 13] executeClaudePrompt completed [Instance: ${instanceId}]`);
+      // Add message to buffer
+      await this.addMessageToBuffer(message);
+      
       this.logger.info(`[EXIT] handleChannelMessage completed for ${message.author.tag} [Instance: ${instanceId}]`);
     } catch (error) {
       this.logger.error(`[ERROR] Error in handleChannelMessage [Instance: ${instanceId}]: ${error instanceof Error ? error.message : String(error)}`);
@@ -401,6 +405,92 @@ export class ClaudeDiscordBot {
         this.logger.error(`[ERROR] Failed to send error reply [Instance: ${instanceId}]: ${replyError}`);
       }
     }
+  }
+
+  /**
+   * Add message to buffer and handle buffer processing
+   */
+  private async addMessageToBuffer(message: Message): Promise<void> {
+    const channelId = message.channel.id;
+    
+    // Get or create buffer for this channel
+    let buffer = this.messageBuffer.get(channelId);
+    if (!buffer) {
+      buffer = { messages: [] };
+      this.messageBuffer.set(channelId, buffer);
+    }
+    
+    // Add message to buffer
+    buffer.messages.push(message);
+    this.logger.info(`Added message to buffer. Buffer size: ${buffer.messages.length}`);
+    
+    // Check if buffer is full
+    if (buffer.messages.length >= this.MAX_BUFFER_SIZE) {
+      this.logger.info(`Buffer reached max size (${this.MAX_BUFFER_SIZE}), processing immediately`);
+      await this.processBufferedMessages(channelId);
+      return;
+    }
+    
+    // Clear existing timer
+    if (buffer.timer) {
+      clearTimeout(buffer.timer);
+    }
+    
+    // Set new timer
+    buffer.timer = setTimeout(async () => {
+      this.logger.info(`Buffer timeout reached, processing ${buffer.messages.length} messages`);
+      await this.processBufferedMessages(channelId);
+    }, this.BUFFER_TIMEOUT_MS) as unknown as number;
+    
+    // Send acknowledgment for the first message
+    if (buffer.messages.length === 1) {
+      await message.react('⏳');
+      this.logger.info('Added waiting reaction to first message');
+    }
+  }
+  
+  /**
+   * Process all buffered messages for a channel
+   */
+  private async processBufferedMessages(channelId: string): Promise<void> {
+    const buffer = this.messageBuffer.get(channelId);
+    if (!buffer || buffer.messages.length === 0) {
+      return;
+    }
+    
+    // Clear timer
+    if (buffer.timer) {
+      clearTimeout(buffer.timer);
+      buffer.timer = undefined;
+    }
+    
+    // Get messages and clear buffer
+    const messages = [...buffer.messages];
+    buffer.messages = [];
+    
+    this.logger.info(`Processing ${messages.length} buffered messages`);
+    
+    // Combine all message contents
+    const combinedPrompt = messages.map((msg, index) => {
+      return `[メッセージ ${index + 1} from ${msg.author.username}]: ${msg.content}`;
+    }).join('\n\n');
+    
+    this.logger.info(`Combined prompt:\n${combinedPrompt.substring(0, 500)}...`);
+    
+    // Use the first message for context and replies
+    const firstMessage = messages[0];
+    const lastMessage = messages[messages.length - 1];
+    
+    if (!firstMessage || !lastMessage) {
+      this.logger.error('No messages to process in buffer');
+      return;
+    }
+    
+    // Remove waiting reaction from first message
+    await firstMessage.reactions.cache.get('⏳')?.remove().catch(() => {});
+    
+    // Execute combined prompt
+    await this.executeClaudePrompt(lastMessage, combinedPrompt);
   }
 
   /**
@@ -503,6 +593,18 @@ export class ClaudeDiscordBot {
       // Stop response monitor
       if (this.responseMonitorInterval) {
         clearInterval(this.responseMonitorInterval);
+      }
+      
+      // Clear all message buffer timers
+      for (const [channelId, buffer] of this.messageBuffer.entries()) {
+        if (buffer.timer) {
+          clearTimeout(buffer.timer);
+        }
+        // Process any remaining buffered messages
+        if (buffer.messages.length > 0) {
+          this.logger.info(`Processing ${buffer.messages.length} buffered messages before shutdown`);
+          await this.processBufferedMessages(channelId);
+        }
       }
 
       // Send shutdown message to channel
