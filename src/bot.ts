@@ -48,8 +48,7 @@ export class ClaudeDiscordBot {
     this.claudeExecutor = new ClaudeCodeExecutor(
       this.tmuxManager,
       config.projectContext,
-      this.logger,
-      config.enableUltraThink || false,
+      this.logger
     );
 
     this.client = new Client({
