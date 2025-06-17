@@ -165,7 +165,8 @@ export class ClaudeDiscordBot {
     });
 
     this.client.on("messageCreate", async (message) => {
-      if (message.author.bot) return;
+      // Skip messages from this bot itself
+      if (message.author.id === this.client.user?.id) return;
       if (message.channel.id !== this.targetChannelId) return;
 
       await this.handleChannelMessage(message);

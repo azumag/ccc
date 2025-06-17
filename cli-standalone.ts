@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.8.5";
+const VERSION = "1.9.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -255,8 +255,8 @@ class ClaudeDiscordBot {
   }
 
   private async handleMessage(message: Message): Promise<void> {
-    // Skip bot messages
-    if (message.author.bot) return;
+    // Skip messages from this bot itself
+    if (message.author.id === this.client.user?.id) return;
 
     // Check if message is in target channel
     if (message.channelId !== this.targetChannelId) return;
@@ -309,6 +309,8 @@ class ClaudeDiscordBot {
       
       // Create enhanced prompt that instructs Claude to use send-to-discord command
       const enhancedPrompt = `${message.content}
+
+ultrathink
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;

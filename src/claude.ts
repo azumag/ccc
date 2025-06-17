@@ -104,6 +104,8 @@ export class ClaudeCodeExecutor {
   private createEnhancedPrompt(userPrompt: string): string {
     return `${userPrompt}
 
+ultrathink
+
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 ./discord-respond.ts "あなたの応答内容"`;
   }
