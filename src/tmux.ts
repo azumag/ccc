@@ -9,12 +9,22 @@ export class TmuxSessionManager {
   private lastActivity: Date;
   private logger: Logger;
   private useDangerouslySkipPermissions: boolean;
+  private enableResume: boolean;
+  private enableContinue: boolean;
 
-  constructor(sessionName = "claude-main", logger: Logger, useDangerouslySkipPermissions = false) {
+  constructor(
+    sessionName = "claude-main", 
+    logger: Logger, 
+    useDangerouslySkipPermissions = false,
+    enableResume = false,
+    enableContinue = false
+  ) {
     this.sessionName = sessionName;
     this.lastActivity = new Date();
     this.logger = logger;
     this.useDangerouslySkipPermissions = useDangerouslySkipPermissions;
+    this.enableResume = enableResume;
+    this.enableContinue = enableContinue;
   }
 
   /**
@@ -84,9 +94,19 @@ export class TmuxSessionManager {
     }
 
     // Start Claude Code in the main pane
-    const claudeCommand = this.useDangerouslySkipPermissions 
-      ? "claude --dangerously-skip-permissions" 
-      : "claude";
+    let claudeCommand = "claude";
+    
+    if (this.useDangerouslySkipPermissions) {
+      claudeCommand += " --dangerously-skip-permissions";
+    }
+    
+    if (this.enableResume) {
+      claudeCommand += " -r";
+    }
+    
+    if (this.enableContinue) {
+      claudeCommand += " -c";
+    }
     
     const claudeResult = await this.executeTmuxCommand({
       args: [

@@ -12,7 +12,7 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.10.7";
+const VERSION = "1.10.8";
 
 interface CLIConfig {
   projectPath: string;
@@ -34,6 +34,8 @@ interface BotConfig {
   logLevel: string;
   enableUltraThink?: boolean;
   useDangerouslySkipPermissions?: boolean;
+  enableResume?: boolean;
+  enableContinue?: boolean;
 }
 
 interface BotStats {
@@ -543,7 +545,7 @@ export class ClaudeDiscordBotCLI {
   async run(args: string[]): Promise<void> {
     const parsed = parseArgs(args, {
       string: ["channel", "project", "log-level", "session"],
-      boolean: ["help", "version", "verbose", "ultrathink", "dangerously-permit"],
+      boolean: ["help", "version", "verbose", "ultrathink", "dangerously-permit", "resume", "continue"],
       alias: {
         h: "help",
         v: "version",
@@ -612,6 +614,8 @@ ${colors.yellow("OPTIONS:")}
   --log-level <level>      Log level: debug, info, warn, error
   --ultrathink             Enable ultrathink mode for enhanced responses
   --dangerously-permit     Use --dangerously-skip-permissions for Claude
+  --resume                 Start Claude with resume mode (-r flag)
+  --continue               Start Claude with continue mode (-c flag)
   -h, --help              Show this help
   -v, --version           Show version
 
@@ -621,6 +625,8 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot start --channel dev            # Start with specific channel
   claude-discord-bot start --ultrathink             # Start with enhanced thinking
   claude-discord-bot start --dangerously-permit     # Start with permissions bypassed
+  claude-discord-bot start --resume                 # Start with resume mode
+  claude-discord-bot start --continue               # Start with continue mode
   claude-discord-bot start --global                 # Start from global directory
   claude-discord-bot status                         # Check bot status
   claude-discord-bot send-to-discord "Hello world"   # Send message to Discord
@@ -890,7 +896,7 @@ LOG_LEVEL=info
 
 
 
-  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean}): Promise<void> {
+  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean}): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
 
     const projectPath = args.project || Deno.cwd();
@@ -955,6 +961,8 @@ LOG_LEVEL=info
       logLevel: Deno.env.get("LOG_LEVEL") || "info",
       enableUltraThink: args.ultrathink || false,
       useDangerouslySkipPermissions: args["dangerously-permit"] || false,
+      enableResume: args.resume || false,
+      enableContinue: args.continue || false,
     };
 
     console.log(colors.green("🤖 Bot を起動しています..."));

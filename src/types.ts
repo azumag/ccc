@@ -56,6 +56,10 @@ export interface BotConfig {
   enableUltraThink?: boolean;
   /** Whether to use dangerously-skip-permissions for Claude */
   useDangerouslySkipPermissions?: boolean;
+  /** Whether to enable resume mode (-r flag for Claude) */
+  enableResume?: boolean;
+  /** Whether to enable continue mode (-c flag for Claude) */
+  enableContinue?: boolean;
 }
 
 export interface CommandResult {
