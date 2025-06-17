@@ -13,7 +13,9 @@
 - ⚡ **高速実行**: メンション不要、投稿内容をそのまま処理
 - 🔄 **永続セッション**: tmux経由でClaudeセッションを維持
 - 🚀 **自動起動**: Bot起動時にClaude環境を自動準備
-- 🛡️ **権限フリー**: `--dangerously-skip-permissions`で制約なし
+- 🧠 **拡張思考モード**: `--ultrathink`で詳細な分析・思考プロセス
+- 🛡️ **権限フリー**: `--dangerously-permit`で制約なし
+- ⚙️ **柔軟な設定**: コマンドライン引数で動作を制御
 - 📊 **ステータス管理**: リアルタイムでBot状態を確認
 - 🧪 **テスト対応**: 包括的なテストスイート
 - 📦 **パッケージ化**: JSR/npm で簡単インストール
@@ -229,6 +231,37 @@ docker-compose down
 2. **メッセージ送信**: 指定したDiscordチャネルにメッセージを投稿
 3. **自動実行**: Botが自動的にClaude Codeに送信して実行
 4. **結果返信**: 実行結果が同じチャネルに返信される
+
+### 🧠 拡張思考モードの活用
+
+拡張思考モード（`--ultrathink`）を有効にすると、Claudeがより詳細な分析と思考プロセスを表示します：
+
+```bash
+# 拡張思考モードで起動
+claude-discord-bot start --ultrathink
+```
+
+**通常モード vs 拡張思考モード:**
+
+```
+## 通常モード
+👤 ユーザー: この関数を最適化して
+🤖 Bot: 関数を最適化しました：[コード]
+
+## 拡張思考モード  
+👤 ユーザー: この関数を最適化して
+🤖 Bot: 💭 *この関数の現在の実装を分析しています...*
+💭 *パフォーマンスのボトルネックを特定中...*
+💭 *メモリ使用量とアルゴリズム効率を検討...*
+💭 *最適化案を複数検討して最良の手法を選択...*
+
+関数を以下の観点で最適化しました：
+1. アルゴリズム効率: O(n²) → O(n log n)
+2. メモリ使用量: 中間配列を削除して30%削減
+3. 可読性: より明確な変数名と構造
+
+[最適化されたコード]
+```
 
 ### 実際の使用例
 
@@ -573,6 +606,15 @@ claude-discord-bot start --channel dev-claude
 # デバッグモードで起動
 claude-discord-bot start --log-level debug
 
+# 拡張思考モードで起動
+claude-discord-bot start --ultrathink
+
+# 権限バイパスで起動
+claude-discord-bot start --dangerously-permit
+
+# 両方のオプションを組み合わせ
+claude-discord-bot start --ultrathink --dangerously-permit
+
 # ステータス確認
 claude-discord-bot status
 
@@ -598,6 +640,8 @@ claude-discord-bot --version
 | `--global` | | グローバル設定を使用 | `false` |
 | `--session <name>` | `-s` | tmuxセッション名 | `claude-main` |
 | `--log-level <level>` | | ログレベル | `info` |
+| `--ultrathink` | | 拡張思考モード有効化 | `false` |
+| `--dangerously-permit` | | Claude権限バイパス有効化 | `false` |
 | `--help` | `-h` | ヘルプ表示 | |
 | `--version` | `-v` | バージョン表示 | |
 
@@ -1176,6 +1220,20 @@ LOG_LEVEL=debug claude-discord-bot start
 # 毎日午前2時に再起動（crontab例）
 0 2 * * * claude-discord-bot restart
 ```
+
+### Q: 拡張思考モードはいつ使うべき？
+**A**: 以下の場面で特に有効です：
+- 複雑なアルゴリズムの最適化
+- アーキテクチャ設計の検討
+- バグの詳細な分析
+- コードレビューでの詳細説明
+
+### Q: 権限バイパスは安全？
+**A**: `--dangerously-permit`は以下の場合に使用：
+- サンドボックス環境での実行
+- 完全に制御された環境
+- プロトタイプ開発時
+本番環境では使用を避けてください。
 
 ### Q: 他のAIモデルを使いたい
 **A**: 現在はClaude Code専用です。将来的に他のモデル対応予定。
