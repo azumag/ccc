@@ -12,7 +12,7 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.19.0";
+const VERSION = "1.20.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -33,6 +33,7 @@ interface BotConfig {
   channelName: string;
   tmuxSessionName: string;
   logLevel: string;
+  enableUltraThink?: boolean;
   orchestratorMode?: boolean;
   useDangerouslySkipPermissions?: boolean;
   enableResume?: boolean;
@@ -710,7 +711,7 @@ export class ClaudeDiscordBotCLI {
   async run(args: string[]): Promise<void> {
     const parsed = parseArgs(args, {
       string: ["channel", "project", "log-level", "session"],
-      boolean: ["help", "version", "verbose", "dangerously-permit", "resume", "continue", "orch", "auto-commit", "auto-push"],
+      boolean: ["help", "version", "verbose", "ultrathink", "dangerously-permit", "resume", "continue", "orch", "auto-commit", "auto-push"],
       alias: {
         h: "help",
         v: "version",
@@ -778,6 +779,7 @@ ${colors.yellow("OPTIONS:")}
   -p, --project <path>     Project path (default: current directory)
   --global                 Use global directory (~/.claude-discord-bot)
   --log-level <level>      Log level: debug, info, warn, error
+  --ultrathink             Enable ultrathink mode (add to prompt)
   --dangerously-permit     Use --dangerously-skip-permissions for Claude
   --resume                 Start Claude with resume mode (-r flag)
   --continue               Start Claude with continue mode (-c flag)
@@ -791,6 +793,7 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot init                           # Interactive setup
   claude-discord-bot init --global                  # Global setup
   claude-discord-bot start --channel dev            # Start with specific channel
+  claude-discord-bot start --ultrathink             # Start with ultrathink mode
   claude-discord-bot start --dangerously-permit     # Start with permissions bypassed
   claude-discord-bot start --resume                 # Start with resume mode
   claude-discord-bot start --continue               # Start with continue mode
@@ -1065,7 +1068,7 @@ LOG_LEVEL=info
 
 
 
-  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean, orch?: boolean, "auto-commit"?: boolean, "auto-push"?: boolean}): Promise<void> {
+  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean, orch?: boolean, "auto-commit"?: boolean, "auto-push"?: boolean}): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
 
     const projectPath = args.project || Deno.cwd();
@@ -1128,6 +1131,7 @@ LOG_LEVEL=info
       channelName: Deno.env.get("DISCORD_CHANNEL_NAME") || "claude",
       tmuxSessionName: Deno.env.get("TMUX_SESSION_NAME") || "claude-main",
       logLevel: Deno.env.get("LOG_LEVEL") || "info",
+      enableUltraThink: args.ultrathink || false,
       orchestratorMode: args.orch || false,
       useDangerouslySkipPermissions: args["dangerously-permit"] || false,
       enableResume: args.resume || false,

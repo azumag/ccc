@@ -52,6 +52,8 @@ export interface BotConfig {
   tmuxSessionName: string;
   /** Log level */
   logLevel: "debug" | "info" | "warn" | "error";
+  /** Whether to enable ultrathink mode */
+  enableUltraThink?: boolean;
   /** Whether to use dangerously-skip-permissions for Claude */
   useDangerouslySkipPermissions?: boolean;
   /** Whether to enable resume mode (-r flag for Claude) */
