@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.10.1";
+const VERSION = "1.10.2";
 
 interface CLIConfig {
   projectPath: string;
@@ -318,14 +318,18 @@ class ClaudeDiscordBot {
     this.logger.info(`Processing message from ${message.author.tag}: ${message.content.substring(0, 100)}...`);
     
     try {
+      this.logger.info(`Starting Claude execution for message from ${message.author.tag}`);
+      
       // Send thinking indicator
       const thinkingMessage = await message.reply("🤔 考えています...");
+      this.logger.debug("Thinking message sent");
       
       const startTime = Date.now();
       
       
       // Create enhanced prompt that instructs Claude to use send-to-discord command
       const ultrathinkText = this.config.enableUltraThink ? '\n\nultrathink\n' : '';
+      this.logger.debug(`Enhanced prompt created with ultrathink: ${this.config.enableUltraThink}`);
       
       const enhancedPrompt = `${message.content}${ultrathinkText}
 
@@ -333,7 +337,9 @@ class ClaudeDiscordBot {
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
       
       // Send message to Claude via tmux
+      this.logger.info("Sending prompt to tmux...");
       const success = await this.tmuxManager.sendCommand(enhancedPrompt);
+      this.logger.info(`Prompt sent to tmux, success: ${success}`);
       
       if (success) {
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);

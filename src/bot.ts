@@ -366,12 +366,16 @@ export class ClaudeDiscordBot {
     let thinkingMessage: Message | null = null;
 
     try {
+      this.logger.info(`Starting Claude execution for message from ${message.author.tag}`);
+      
       // Send thinking message
       thinkingMessage = await message.reply("🤔 考えています...");
+      this.logger.debug("Thinking message sent");
 
       // Execute Claude prompt
-      this.logger.debug(`Executing Claude prompt: ${prompt.substring(0, 200)}...`);
+      this.logger.info(`Executing Claude prompt: ${prompt.substring(0, 200)}...`);
       const response = await this.claudeExecutor.executePrompt(prompt, message.channel.id);
+      this.logger.info(`Claude execution completed, success: ${response.success}`);
 
       // Update thinking message
       await thinkingMessage.delete();

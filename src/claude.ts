@@ -30,13 +30,17 @@ export class ClaudeCodeExecutor {
    */
   async executePrompt(prompt: string, channelId: string): Promise<ClaudeResponse> {
     const startTime = Date.now();
-    this.logger.info(`Executing Claude prompt: ${prompt.substring(0, 100)}...`);
+    this.logger.info(`ClaudeCodeExecutor: Starting execution for prompt: ${prompt.substring(0, 100)}...`);
 
     try {
       // Ensure tmux session exists
-      if (!(await this.tmuxManager.hasSession())) {
+      const sessionExists = await this.tmuxManager.hasSession();
+      this.logger.debug(`Tmux session exists: ${sessionExists}`);
+      
+      if (!sessionExists) {
         this.logger.info("Creating new tmux session for Claude");
         const created = await this.tmuxManager.createSession(this.projectContext.rootPath);
+        this.logger.info(`Tmux session creation result: ${created}`);
         if (!created) {
           return {
             content: "",
@@ -52,12 +56,16 @@ export class ClaudeCodeExecutor {
 
       // Save channel ID for Claude to use
       await Deno.writeTextFile("/tmp/claude-discord-channel.txt", channelId);
+      this.logger.debug(`Saved channel ID to file: ${channelId}`);
 
       // Create enhanced prompt that instructs Claude to use the Discord helper
       const enhancedPrompt = this.createEnhancedPrompt(prompt);
+      this.logger.debug(`Enhanced prompt created with ultrathink: ${this.enableUltraThink}`);
 
       // Send prompt to Claude
+      this.logger.info("Sending prompt to tmux...");
       const sent = await this.tmuxManager.sendPrompt(enhancedPrompt);
+      this.logger.info(`Prompt sent to tmux, success: ${sent}`);
       if (!sent) {
         return {
           content: "",
