@@ -163,17 +163,17 @@ TypeScript/JavaScript プロジェクト内で直接使用：
 
 ```typescript
 // GitHub URLから直接インポート（開発版）
-import { 
-  quickSetup, 
+import {
+  ClaudeDiscordBot,
   ClaudeDiscordBotCLI,
-  ClaudeDiscordBot 
+  quickSetup,
 } from "https://raw.githubusercontent.com/azumag/ccc/main/mod.ts";
 
 // 簡単セットアップ
 const config = await quickSetup("./my-project", {
   channelName: "claude-dev",
   logLevel: "debug",
-  tmuxSessionName: "my-claude-session"
+  tmuxSessionName: "my-claude-session",
 });
 
 // 詳細制御
@@ -187,7 +187,7 @@ const bot = new ClaudeDiscordBot({
   authorizedUserId: process.env.AUTHORIZED_USER_ID!,
   channelName: "claude",
   tmuxSessionName: "claude-main",
-  logLevel: "info"
+  logLevel: "info",
 });
 
 await bot.start();
@@ -195,10 +195,10 @@ await bot.start();
 
 <!-- JSR公開後は以下を使用:
 ```typescript
-import { 
-  quickSetup, 
+import {
+  quickSetup,
   ClaudeDiscordBotCLI,
-  ClaudeDiscordBot 
+  ClaudeDiscordBot
 } from "jsr:@azumag/claude-discord-bot";
 ```
 -->
@@ -267,7 +267,7 @@ claude-discord-bot start --ultrathink
 
 #### 1. React開発
 
-```
+````
 Discord (#dev-channel):
 👤 ユーザー: ログイン機能付きのReactコンポーネントを作って
 
@@ -324,7 +324,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, loading = false }) => {
 };
 
 export default LoginForm;
-```
+````
 
 対応するCSSファイルも作成しました：
 
@@ -370,11 +370,11 @@ button:disabled {
   cursor: not-allowed;
 }
 ```
-```
 
+```
 #### 2. API作成
-
 ```
+
 Discord (#backend):
 👤 ユーザー: Express.jsでユーザー認証APIを作って
 
@@ -385,27 +385,27 @@ Discord (#backend):
 
 ```typescript
 // src/routes/auth.ts
-import express from 'express';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
+import express from "express";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { User } from "../models/User";
 
 const router = express.Router();
 
 // ユーザー登録
-router.post('/register', async (req, res) => {
+router.post("/register", async (req, res) => {
   try {
     const { email, password, name } = req.body;
-    
+
     // バリデーション
     if (!email || !password || !name) {
-      return res.status(400).json({ error: 'すべてのフィールドが必要です' });
+      return res.status(400).json({ error: "すべてのフィールドが必要です" });
     }
 
     // 既存ユーザーチェック
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({ error: 'ユーザーは既に存在します' });
+      return res.status(409).json({ error: "ユーザーは既に存在します" });
     }
 
     // パスワードハッシュ化
@@ -416,7 +416,7 @@ router.post('/register', async (req, res) => {
     const user = new User({
       email,
       password: hashedPassword,
-      name
+      name,
     });
 
     await user.save();
@@ -425,65 +425,65 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
+      { expiresIn: "24h" },
     );
 
     res.status(201).json({
-      message: 'ユーザーが正常に作成されました',
+      message: "ユーザーが正常に作成されました",
       token,
       user: {
         id: user._id,
         email: user.email,
-        name: user.name
-      }
+        name: user.name,
+      },
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: '内部サーバーエラー' });
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "内部サーバーエラー" });
   }
 });
 
 // ログイン
-router.post('/login', async (req, res) => {
+router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     // バリデーション
     if (!email || !password) {
-      return res.status(400).json({ error: 'メールとパスワードが必要です' });
+      return res.status(400).json({ error: "メールとパスワードが必要です" });
     }
 
     // ユーザー検索
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ error: '無効な認証情報です' });
+      return res.status(401).json({ error: "無効な認証情報です" });
     }
 
     // パスワード検証
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ error: '無効な認証情報です' });
+      return res.status(401).json({ error: "無効な認証情報です" });
     }
 
     // JWTトークン生成
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
+      { expiresIn: "24h" },
     );
 
     res.json({
-      message: 'ログイン成功',
+      message: "ログイン成功",
       token,
       user: {
         id: user._id,
         email: user.email,
-        name: user.name
-      }
+        name: user.name,
+      },
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: '内部サーバーエラー' });
+    console.error("Login error:", error);
+    res.status(500).json({ error: "内部サーバーエラー" });
   }
 });
 
@@ -494,8 +494,8 @@ export default router;
 
 ```typescript
 // src/middleware/auth.ts
-import jwt from 'jsonwebtoken';
-import { Request, Response, NextFunction } from 'express';
+import jwt from "jsonwebtoken";
+import { NextFunction, Request, Response } from "express";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -505,30 +505,31 @@ export interface AuthRequest extends Request {
 }
 
 export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ error: 'アクセストークンが必要です' });
+    return res.status(401).json({ error: "アクセストークンが必要です" });
   }
 
   jwt.verify(token, process.env.JWT_SECRET!, (err, decoded) => {
     if (err) {
-      return res.status(403).json({ error: '無効なトークンです' });
+      return res.status(403).json({ error: "無効なトークンです" });
     }
-    
+
     req.user = decoded as { userId: string; email: string };
     next();
   });
 };
 ```
-```
 
+```
 #### 3. バグ修正
-
 ```
+
 Discord (#debugging):
 👤 ユーザー: TypeScriptでnullエラーが出てる。この関数を直して：
+
 ```typescript
 function getUserName(user) {
   return user.profile.name.toUpperCase();
@@ -552,40 +553,41 @@ interface User {
 function getUserName(user: User | null | undefined): string {
   // nullチェックとオプショナルチェーンを使用
   if (!user?.profile?.name) {
-    return 'UNKNOWN USER';
+    return "UNKNOWN USER";
   }
-  
+
   return user.profile.name.toUpperCase();
 }
 
 // より安全な代替案（Optionalパターン使用）
 function getUserNameSafe(user: User | null | undefined): string {
   try {
-    return user?.profile?.name?.toUpperCase() ?? 'UNKNOWN USER';
+    return user?.profile?.name?.toUpperCase() ?? "UNKNOWN USER";
   } catch (error) {
-    console.warn('getUserName error:', error);
-    return 'UNKNOWN USER';
+    console.warn("getUserName error:", error);
+    return "UNKNOWN USER";
   }
 }
 
 // 使用例
-const user1: User = { profile: { name: 'john doe' } };
+const user1: User = { profile: { name: "john doe" } };
 const user2: User = { profile: {} };
 const user3: User = {};
 
 console.log(getUserName(user1)); // "JOHN DOE"
 console.log(getUserName(user2)); // "UNKNOWN USER"
 console.log(getUserName(user3)); // "UNKNOWN USER"
-console.log(getUserName(null));  // "UNKNOWN USER"
+console.log(getUserName(null)); // "UNKNOWN USER"
 ```
 
 修正のポイント：
+
 1. **型定義の追加**: インターフェースで構造を明確化
 2. **オプショナルチェーン**: `?.`でnullエラーを防止
 3. **Nullish Coalescing**: `??`でデフォルト値を設定
 4. **エラーハンドリング**: try-catch文で予期しないエラーをキャッチ
-```
 
+````
 ## 🛠️ CLI コマンドリファレンス
 
 ### 基本コマンド
@@ -629,21 +631,21 @@ claude-discord-bot --help
 
 # バージョン表示
 claude-discord-bot --version
-```
+````
 
 ### オプション
 
-| オプション | 短縮 | 説明 | デフォルト |
-|-----------|------|------|-----------|
-| `--channel <name>` | `-c` | Discord チャネル名 | `claude` |
-| `--project <path>` | `-p` | プロジェクトパス | 現在のディレクトリ |
-| `--global` | | グローバル設定を使用 | `false` |
-| `--session <name>` | `-s` | tmuxセッション名 | `claude-main` |
-| `--log-level <level>` | | ログレベル | `info` |
-| `--ultrathink` | | 拡張思考モード有効化 | `false` |
-| `--dangerously-permit` | | Claude権限バイパス有効化 | `false` |
-| `--help` | `-h` | ヘルプ表示 | |
-| `--version` | `-v` | バージョン表示 | |
+| オプション             | 短縮 | 説明                     | デフォルト         |
+| ---------------------- | ---- | ------------------------ | ------------------ |
+| `--channel <name>`     | `-c` | Discord チャネル名       | `claude`           |
+| `--project <path>`     | `-p` | プロジェクトパス         | 現在のディレクトリ |
+| `--global`             |      | グローバル設定を使用     | `false`            |
+| `--session <name>`     | `-s` | tmuxセッション名         | `claude-main`      |
+| `--log-level <level>`  |      | ログレベル               | `info`             |
+| `--ultrathink`         |      | 拡張思考モード有効化     | `false`            |
+| `--dangerously-permit` |      | Claude権限バイパス有効化 | `false`            |
+| `--help`               | `-h` | ヘルプ表示               |                    |
+| `--version`            | `-v` | バージョン表示           |                    |
 
 ### 一回限り実行
 
@@ -658,12 +660,12 @@ deno run --allow-all https://raw.githubusercontent.com/azumag/ccc/main/cli-stand
 
 ### Discord特殊コマンド
 
-| コマンド | 説明 |
-|---------|------|
-| `/restart` | Claudeセッションを再起動 |
-| `/status` | Bot・セッション状態を表示 |
-| `/attach` | tmuxセッション接続方法を表示 |
-| `/help` | 利用可能なコマンド一覧 |
+| コマンド   | 説明                         |
+| ---------- | ---------------------------- |
+| `/restart` | Claudeセッションを再起動     |
+| `/status`  | Bot・セッション状態を表示    |
+| `/attach`  | tmuxセッション接続方法を表示 |
+| `/help`    | 利用可能なコマンド一覧       |
 
 ### tmuxセッション直接操作
 
@@ -810,6 +812,7 @@ claude --version
 **3. "Used disallowed intents"エラー**
 
 Discord Developer Portal で以下を有効化:
+
 - ✅ Message Content Intent
 
 **4. "Guild not found"エラー**
@@ -821,6 +824,7 @@ Discord Developer Portal で以下を有効化:
 **5. "deno: not found"エラー（CLI使用時）**
 
 PATHが設定されていない場合:
+
 ```bash
 # 永続的に設定
 echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.zshrc
@@ -856,14 +860,14 @@ tmux send-keys -t test-claude "claude --dangerously-skip-permissions" Enter
 
 ### 環境変数
 
-| 変数名 | 必須 | デフォルト | 説明 |
-|--------|------|-----------|------|
-| `DISCORD_BOT_TOKEN` | ✅ | - | Discord Bot Token |
-| `GUILD_ID` | ✅ | - | Discord Server ID |
-| `AUTHORIZED_USER_ID` | ✅ | - | 認証ユーザーID |
-| `DISCORD_CHANNEL_NAME` | | `claude` | 監視対象チャネル名 |
-| `TMUX_SESSION_NAME` | | `claude-main` | tmuxセッション名 |
-| `LOG_LEVEL` | | `info` | ログレベル |
+| 変数名                 | 必須 | デフォルト    | 説明               |
+| ---------------------- | ---- | ------------- | ------------------ |
+| `DISCORD_BOT_TOKEN`    | ✅   | -             | Discord Bot Token  |
+| `GUILD_ID`             | ✅   | -             | Discord Server ID  |
+| `AUTHORIZED_USER_ID`   | ✅   | -             | 認証ユーザーID     |
+| `DISCORD_CHANNEL_NAME` |      | `claude`      | 監視対象チャネル名 |
+| `TMUX_SESSION_NAME`    |      | `claude-main` | tmuxセッション名   |
+| `LOG_LEVEL`            |      | `info`        | ログレベル         |
 
 ### コマンドライン引数
 
@@ -962,7 +966,7 @@ CMD ["claude-discord-bot", "start"]
 #### docker-compose.yml
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   claude-discord-bot:
@@ -977,8 +981,8 @@ services:
       - TMUX_SESSION_NAME=${TMUX_SESSION_NAME:-claude-main}
       - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
-      - ./project:/app/project  # プロジェクトファイル用
-      - ./logs:/app/logs        # ログファイル用
+      - ./project:/app/project # プロジェクトファイル用
+      - ./logs:/app/logs # ログファイル用
     networks:
       - claude-network
     # tmux用の疑似TTY
@@ -1057,32 +1061,32 @@ spec:
         app: claude-discord-bot
     spec:
       containers:
-      - name: claude-discord-bot
-        image: claude-discord-bot:latest
-        env:
-        - name: DISCORD_BOT_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: claude-bot-secrets
-              key: discord-token
-        - name: GUILD_ID
-          value: "your-guild-id"
-        - name: AUTHORIZED_USER_ID
-          value: "your-user-id"
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        volumeMounts:
-        - name: project-storage
-          mountPath: /app/project
+        - name: claude-discord-bot
+          image: claude-discord-bot:latest
+          env:
+            - name: DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: claude-bot-secrets
+                  key: discord-token
+            - name: GUILD_ID
+              value: "your-guild-id"
+            - name: AUTHORIZED_USER_ID
+              value: "your-user-id"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: project-storage
+              mountPath: /app/project
       volumes:
-      - name: project-storage
-        persistentVolumeClaim:
-          claimName: claude-project-pvc
+        - name: project-storage
+          persistentVolumeClaim:
+            claimName: claude-project-pvc
 ```
 
 ## 📝 ライセンス
@@ -1108,12 +1112,14 @@ MIT License
 ### Claudeとの効果的なやり取り
 
 #### 1. 明確な指示を出す
+
 ```
 ❌ 悪い例: "何かいい感じにして"
 ✅ 良い例: "TypeScriptでAPIエラーハンドリングを実装して。ステータスコード、エラーメッセージ、ログ出力を含める"
 ```
 
 #### 2. コンテキストを提供する
+
 ```
 ❌ 悪い例: "この関数を直して"
 ✅ 良い例: "React Hook useEffectでAPIを呼び出すこの関数で、依存配列が原因で無限ループが発生している。修正して：
@@ -1121,6 +1127,7 @@ MIT License
 ```
 
 #### 3. 要求する出力形式を指定
+
 ```
 ✅ 良い例: "Express.jsでREST APIを作って。以下の要件で：
 - TypeScript使用
@@ -1132,6 +1139,7 @@ MIT License
 ### プロジェクト管理のコツ
 
 #### 1. 作業単位を明確にする
+
 ```bash
 # 機能ごとにディレクトリ分け
 Discord (#feature-auth): "認証機能を実装して"
@@ -1140,6 +1148,7 @@ Discord (#bugfix): "この型エラーを修正して"
 ```
 
 #### 2. 段階的な開発
+
 ```
 段階1: "基本的なログイン画面を作って"
 段階2: "バリデーション機能を追加して"
@@ -1157,13 +1166,17 @@ Discord (#bugfix): "この型エラーを修正して"
 ## ❓ FAQ
 
 ### Q: Discordでメッセージを送ったのに反応しない
+
 **A**: 以下を確認してください：
+
 - Botが正しいチャネルを監視しているか（`/status`で確認）
 - tmuxセッションが起動しているか（`tmux list-sessions`）
 - Claude Code CLIが認証されているか（`claude --version`）
 
 ### Q: tmuxセッションに接続できない
-**A**: 
+
+**A**:
+
 ```bash
 # セッション一覧確認
 tmux list-sessions
@@ -1176,7 +1189,9 @@ tmux new-session -d -s claude-main -c $(pwd)
 ```
 
 ### Q: コンテナ内でtmuxが動かない
+
 **A**: docker-compose.ymlで以下を設定：
+
 ```yaml
 services:
   claude-discord-bot:
@@ -1185,14 +1200,18 @@ services:
 ```
 
 ### Q: Claude Codeの応答が長すぎてDiscordで送信できない
+
 **A**: Botが自動的に2000文字で分割して送信します。分割を避けたい場合：
+
 ```
 "簡潔な説明で結果を返して"
 "要点のみを箇条書きで"
 ```
 
 ### Q: 複数のプロジェクトで使いたい
+
 **A**: プロジェクトごとに異なるチャネルを使用：
+
 ```bash
 # プロジェクト1
 claude-discord-bot start --channel project1-dev
@@ -1202,7 +1221,9 @@ claude-discord-bot start --channel project2-dev
 ```
 
 ### Q: ログが多すぎる
+
 **A**: ログレベルを調整：
+
 ```bash
 # 本番環境
 LOG_LEVEL=warn claude-discord-bot start
@@ -1212,41 +1233,53 @@ LOG_LEVEL=debug claude-discord-bot start
 ```
 
 ### Q: パフォーマンスを向上させたい
-**A**: 
+
+**A**:
+
 - SSDでの実行を推奨
 - メモリ1GB以上推奨
 - tmuxセッションの定期的な再起動
+
 ```bash
 # 毎日午前2時に再起動（crontab例）
 0 2 * * * claude-discord-bot restart
 ```
 
 ### Q: 拡張思考モードはいつ使うべき？
+
 **A**: 以下の場面で特に有効です：
+
 - 複雑なアルゴリズムの最適化
 - アーキテクチャ設計の検討
 - バグの詳細な分析
 - コードレビューでの詳細説明
 
 ### Q: 権限バイパスは安全？
+
 **A**: `--dangerously-permit`は以下の場合に使用：
+
 - サンドボックス環境での実行
 - 完全に制御された環境
 - プロトタイプ開発時
-本番環境では使用を避けてください。
+  本番環境では使用を避けてください。
 
 ### Q: 他のAIモデルを使いたい
+
 **A**: 現在はClaude Code専用です。将来的に他のモデル対応予定。
 
 ### Q: 複数人で同じBotを使いたい
+
 **A**: `AUTHORIZED_USER_ID`を削除するか、認証機能を無効化：
+
 ```typescript
 // src/bot.ts - 認証チェックを削除
 // if (message.author.id !== this.config.authorizedUserId) return;
 ```
 
 ### Q: プライベートなコードを扱っても安全？
-**A**: 
+
+**A**:
+
 - ローカル実行なので外部送信なし
 - Discord APIのみ通信
 - tmuxセッションはローカル環境内

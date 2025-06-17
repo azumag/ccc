@@ -13,11 +13,11 @@ export class TmuxSessionManager {
   private enableContinue: boolean;
 
   constructor(
-    sessionName = "claude-main", 
-    logger: Logger, 
+    sessionName = "claude-main",
+    logger: Logger,
     useDangerouslySkipPermissions = false,
     enableResume = false,
-    enableContinue = false
+    enableContinue = false,
   ) {
     this.sessionName = sessionName;
     this.lastActivity = new Date();
@@ -95,19 +95,19 @@ export class TmuxSessionManager {
 
     // Start Claude Code in the main pane
     let claudeCommand = "claude";
-    
+
     if (this.useDangerouslySkipPermissions) {
       claudeCommand += " --dangerously-skip-permissions";
     }
-    
+
     if (this.enableResume) {
       claudeCommand += " -r";
     }
-    
+
     if (this.enableContinue) {
       claudeCommand += " -c";
     }
-    
+
     const claudeResult = await this.executeTmuxCommand({
       args: [
         "send-keys",
@@ -127,7 +127,7 @@ export class TmuxSessionManager {
 
     // Wait for Claude to start and check if it's ready
     await new Promise((resolve) => setTimeout(resolve, 5000));
-    
+
     // Send a test prompt to ensure Claude is ready
     this.logger.debug("Sending test prompt to verify Claude is ready...");
     await this.sendPrompt("echo ready");
@@ -253,9 +253,9 @@ export class TmuxSessionManager {
     if (promptIndices.length >= 2) {
       const startIndex = (promptIndices[promptIndices.length - 2] ?? 0) + 1;
       const endIndex = promptIndices[promptIndices.length - 1] ?? lines.length;
-      
+
       this.logger.debug(`Capturing between lines ${startIndex} and ${endIndex}`);
-      
+
       for (let i = startIndex; i < endIndex; i++) {
         const line = lines[i];
         if (line && !this.isLogLine(line) && line.trim()) {
@@ -277,7 +277,7 @@ export class TmuxSessionManager {
 
     // Clean up the response
     const response = claudeResponse.join("\n").trim();
-    
+
     this.logger.debug(`Final Claude response: ${response.length} characters`);
     this.logger.debug(`Response preview: ${response.substring(0, 200)}...`);
     return response;

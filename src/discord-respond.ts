@@ -4,7 +4,8 @@
 // Usage: ./discord-respond.ts "Your message here"
 
 const message = Deno.args[0];
-const channelId = Deno.args[1] || await Deno.readTextFile("/tmp/claude-discord-channel.txt").catch(() => "");
+const channelId = Deno.args[1] ||
+  await Deno.readTextFile("/tmp/claude-discord-channel.txt").catch(() => "");
 
 if (!message) {
   console.error("Usage: ./discord-respond.ts <message> [channelId]");
@@ -15,12 +16,12 @@ const response = {
   content: message,
   channelId: channelId,
   timestamp: new Date().toISOString(),
-  type: "text"
+  type: "text",
 };
 
 await Deno.writeTextFile(
   "/tmp/claude-discord-response.json",
-  JSON.stringify(response, null, 2)
+  JSON.stringify(response, null, 2),
 );
 
 console.log("Response queued for Discord");

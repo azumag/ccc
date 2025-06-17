@@ -2,31 +2,31 @@ name: Test CLI Prompt Generation
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test-prompt-generation:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Deno
-      uses: denoland/setup-deno@v1
-      with:
-        deno-version: v2.x
-        
-    - name: Run CLI prompt generation tests
-      run: deno test --allow-all tests/cli-prompt-generation.test.ts
-      
-    - name: Check TypeScript compilation
-      run: deno check cli.ts cli-standalone.ts
-      
-    - name: Run linting
-      run: deno lint
-      
-    - name: Run formatting check
-      run: deno fmt --check
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - name: Run CLI prompt generation tests
+        run: deno test --allow-all tests/cli-prompt-generation.test.ts
+
+      - name: Check TypeScript compilation
+        run: deno check cli.ts cli-standalone.ts
+
+      - name: Run linting
+        run: deno lint
+
+      - name: Run formatting check
+        run: deno fmt --check

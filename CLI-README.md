@@ -25,6 +25,7 @@ claude-discord-bot init --project /path/to/project
 ```
 
 **実行内容：**
+
 - プロジェクトの自動検出（言語・フレームワーク）
 - Discord設定の対話式入力
 - 必要ファイルの自動生成

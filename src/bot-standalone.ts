@@ -58,7 +58,7 @@ class SimpleTmuxManager {
   async createSession(): Promise<boolean> {
     try {
       this.logger.info(`Creating tmux session: ${this.sessionName}`);
-      
+
       const cmd = new Deno.Command("tmux", {
         args: ["new-session", "-d", "-s", this.sessionName],
         cwd: Deno.cwd(),
@@ -66,14 +66,14 @@ class SimpleTmuxManager {
 
       const process = cmd.spawn();
       const status = await process.status;
-      
+
       if (status.success) {
         // Start Claude Code in the session
         await this.sendCommand("claude --dangerously-skip-permissions");
         this.logger.info("Claude Code session started successfully");
         return true;
       }
-      
+
       return false;
     } catch (error) {
       this.logger.error(`Failed to create tmux session: ${error}`);
@@ -161,7 +161,7 @@ export class ClaudeDiscordBot {
 
   private async initializeClaudeSession(): Promise<void> {
     this.logger.info("Initializing Claude session...");
-    
+
     if (!await this.tmuxManager.sessionExists()) {
       const created = await this.tmuxManager.createSession();
       if (created) {
@@ -184,7 +184,7 @@ export class ClaudeDiscordBot {
     }
 
     const channel = guild.channels.cache.find(
-      (ch) => ch.name === this.config.channelName && ch.isTextBased()
+      (ch) => ch.name === this.config.channelName && ch.isTextBased(),
     ) as TextChannel;
 
     if (channel) {
@@ -239,30 +239,34 @@ export class ClaudeDiscordBot {
   }
 
   private async processMessage(message: Message): Promise<void> {
-    this.logger.info(`Processing message from ${message.author.tag}: ${message.content.substring(0, 100)}...`);
-    
+    this.logger.info(
+      `Processing message from ${message.author.tag}: ${message.content.substring(0, 100)}...`,
+    );
+
     try {
       // Send thinking indicator
       const thinkingMessage = await message.reply("🤔 考えています...");
-      
+
       const startTime = Date.now();
-      
+
       // Send message to Claude via tmux
       const success = await this.tmuxManager.sendCommand(message.content);
-      
+
       if (success) {
         const _duration = ((Date.now() - startTime) / 1000).toFixed(1);
         await thinkingMessage.delete();
-        await message.react('👀');
-        
+        await message.react("👀");
+
         // In a real implementation, you would capture Claude's response
         // For now, we just acknowledge the command was sent
-        
+
         this.stats.messagesProcessed++;
         this.stats.lastActivity = new Date();
       } else {
         await thinkingMessage.edit("❌ 失敗");
-        await message.reply("Claude Codeへの送信に失敗しました。tmuxセッションが正常に動作しているか確認してください。");
+        await message.reply(
+          "Claude Codeへの送信に失敗しました。tmuxセッションが正常に動作しているか確認してください。",
+        );
       }
     } catch (error) {
       this.logger.error(`Error processing message: ${error}`);
@@ -299,7 +303,7 @@ export class ClaudeDiscordBot {
 
   private async restartSession(message: Message): Promise<void> {
     await message.reply("🔄 Claude セッションを再起動しています...");
-    
+
     try {
       // Kill existing session
       const killCmd = new Deno.Command("tmux", {
@@ -309,7 +313,7 @@ export class ClaudeDiscordBot {
 
       // Create new session
       const success = await this.tmuxManager.createSession();
-      
+
       if (success) {
         await message.reply("✅ Claude セッションが再起動されました。");
       } else {
@@ -338,7 +342,9 @@ export class ClaudeDiscordBot {
 • \`Ctrl+B → D\` - セッションから切断
 
 **その他:**
-• 認証ユーザー: ${this.config.authorizedUserId ? `<@${this.config.authorizedUserId}>` : "全ユーザー"}
+• 認証ユーザー: ${
+      this.config.authorizedUserId ? `<@${this.config.authorizedUserId}>` : "全ユーザー"
+    }
 • セッション名: ${this.config.tmuxSessionName}`;
 
     await message.reply(help);
@@ -408,10 +414,10 @@ if (import.meta.main) {
   try {
     const bot = new ClaudeDiscordBot(config);
     await bot.start();
-    
+
     console.log("✅ Bot が正常に起動しました");
     console.log(`🔗 tmuxセッション接続: tmux attach -t ${config.tmuxSessionName}`);
-    
+
     // Handle graceful shutdown
     const shutdown = async () => {
       console.log("\n🛑 シャットダウン中...");
@@ -422,7 +428,6 @@ if (import.meta.main) {
     // Handle Ctrl+C
     Deno.addSignalListener("SIGINT", shutdown);
     Deno.addSignalListener("SIGTERM", shutdown);
-
   } catch (error) {
     console.error("❌ Bot の起動に失敗しました:", error);
     Deno.exit(1);

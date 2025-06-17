@@ -80,8 +80,13 @@ class SimpleLogger {
 
 class SimpleTmuxManager {
   public workingDir?: string;
-  
-  constructor(private sessionName: string, private logger: SimpleLogger, private config: BotConfig, workingDir?: string) {
+
+  constructor(
+    private sessionName: string,
+    private logger: SimpleLogger,
+    private config: BotConfig,
+    workingDir?: string,
+  ) {
     this.workingDir = workingDir;
   }
 
@@ -89,7 +94,7 @@ class SimpleTmuxManager {
     try {
       const workDir = this.workingDir || Deno.cwd();
       this.logger.info(`Creating tmux session: ${this.sessionName} in ${workDir}`);
-      
+
       const cmd = new Deno.Command("tmux", {
         args: ["new-session", "-d", "-s", this.sessionName],
         cwd: workDir,
@@ -97,35 +102,34 @@ class SimpleTmuxManager {
 
       const process = cmd.spawn();
       const status = await process.status;
-      
+
       if (status.success) {
         // Build Claude command with dynamic flags
         const claudeFlags = [];
-        
+
         if (this.config.useDangerouslySkipPermissions) {
           claudeFlags.push("--dangerously-skip-permissions");
         }
-        
-        
+
         if (this.config.enableResume) {
           claudeFlags.push("-r");
         }
-        
+
         if (this.config.enableContinue) {
           claudeFlags.push("-c");
         }
-        
+
         const claudeCommand = `claude ${claudeFlags.join(" ")}`.trim();
         this.logger.info(`Starting Claude Code with command: ${claudeCommand}`);
-        
+
         // Start Claude Code in the session
         await this.sendCommand(claudeCommand);
         this.logger.info("Claude Code session started successfully");
-        
+
         // Setup Discord helper script will be done in bot initialization
         return true;
       }
-      
+
       return false;
     } catch (error) {
       this.logger.error(`Failed to create tmux session: ${error}`);
@@ -146,7 +150,7 @@ class SimpleTmuxManager {
 
       const commandProcess = commandCmd.spawn();
       const commandStatus = await commandProcess.status;
-      
+
       if (!commandStatus.success) {
         this.logger.error("Failed to send command text");
         return false;
@@ -162,7 +166,7 @@ class SimpleTmuxManager {
 
       const enterProcess = enterCmd.spawn();
       const enterStatus = await enterProcess.status;
-      
+
       if (!enterStatus.success) {
         this.logger.error("Failed to send Enter key");
         return false;
@@ -198,15 +202,15 @@ class ClaudeDiscordBot {
   private logger: SimpleLogger;
   private targetChannelId = "";
   private stats: BotStats;
-  
+
   // Message buffering configuration
-  private messageBuffer: Map<string, { 
-    messages: Message[], 
-    timer?: number,
-    lastMessageTime: number,
-    burstMode: boolean 
+  private messageBuffer: Map<string, {
+    messages: Message[];
+    timer?: number;
+    lastMessageTime: number;
+    burstMode: boolean;
   }> = new Map();
-  
+
   // Buffering timeouts
   private readonly SHORT_TIMEOUT_MS = 10000; // 10 seconds for single messages
   private readonly LONG_TIMEOUT_MS = 120000; // 2 minutes for burst mode
@@ -216,7 +220,12 @@ class ClaudeDiscordBot {
   constructor(config: BotConfig, workingDir?: string) {
     this.config = config;
     this.logger = new SimpleLogger(config.logLevel);
-    this.tmuxManager = new SimpleTmuxManager(config.tmuxSessionName, this.logger, config, workingDir);
+    this.tmuxManager = new SimpleTmuxManager(
+      config.tmuxSessionName,
+      this.logger,
+      config,
+      workingDir,
+    );
     this.tmuxManager.workingDir = workingDir;
 
     this.client = new Client({
@@ -243,7 +252,7 @@ class ClaudeDiscordBot {
       this.logger.info(`Bot logged in as ${this.client.user?.tag}`);
       await this.initializeClaudeSession();
       this.findTargetChannel();
-      
+
       // Wait a bit for channel to be fully resolved
       setTimeout(() => {
         this.startPendingMessageMonitor();
@@ -261,7 +270,7 @@ class ClaudeDiscordBot {
 
   private async initializeClaudeSession(): Promise<void> {
     this.logger.info("Initializing Claude session...");
-    
+
     if (!await this.tmuxManager.sessionExists()) {
       const created = await this.tmuxManager.createSession();
       if (created) {
@@ -284,7 +293,7 @@ class ClaudeDiscordBot {
     }
 
     const channel = guild.channels.cache.find(
-      (ch) => ch.name === this.config.channelName && ch.isTextBased()
+      (ch) => ch.name === this.config.channelName && ch.isTextBased(),
     ) as TextChannel;
 
     if (channel) {
@@ -303,14 +312,19 @@ class ClaudeDiscordBot {
     if (message.channelId !== this.targetChannelId) return;
 
     // Check authorization if configured (skip for webhook messages)
-    if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId && !message.webhookId) {
+    if (
+      this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId &&
+      !message.webhookId
+    ) {
       this.logger.debug(`Unauthorized user: ${message.author.tag}`);
       return;
     }
-    
+
     // Log webhook authorization bypass
     if (message.webhookId && this.config.authorizedUserId) {
-      this.logger.info(`Webhook message detected - bypassing authorization for ${message.author.tag}`);
+      this.logger.info(
+        `Webhook message detected - bypassing authorization for ${message.author.tag}`,
+      );
     }
 
     // Handle special commands
@@ -346,55 +360,70 @@ class ClaudeDiscordBot {
   private async processMessage(message: Message, customPrompt?: string): Promise<void> {
     const prompt = customPrompt || message.content;
     const isBufferedPrompt = !!customPrompt;
-    this.logger.info(`Processing ${isBufferedPrompt ? 'buffered' : 'single'} message from ${message.author.tag}: ${prompt.substring(0, 100)}...`);
-    
+    this.logger.info(
+      `Processing ${isBufferedPrompt ? "buffered" : "single"} message from ${message.author.tag}: ${
+        prompt.substring(0, 100)
+      }...`,
+    );
+
     if (isBufferedPrompt) {
       this.logger.info(`Full buffered prompt preview:\n${prompt.substring(0, 500)}...`);
     }
-    
+
     try {
       // Send thinking indicator
       const thinkingMessage = await message.reply("🤔 考えています...");
-      
+
       const startTime = Date.now();
-      
-      
+
       // Create enhanced prompt that instructs Claude to use send-to-discord command
-      const projectPrefix = this.config.orchestratorMode ? '/project:orchestrator\n\n' : '';
-      const ultrathinkText = this.config.enableUltraThink ? '\n\nultrathink\n' : '';
-      
+      const projectPrefix = this.config.orchestratorMode ? "/project:orchestrator\n\n" : "";
+      const ultrathinkText = this.config.enableUltraThink ? "\n\nultrathink\n" : "";
+
       // Add auto-commit/push instructions to prompt
-      let autoGitInstructions = '';
+      let autoGitInstructions = "";
       if (this.config.autoCommit || this.config.autoPush) {
         const actions = [];
-        if (this.config.autoCommit) actions.push('git add . && git commit -m "task: Auto commit on task completion\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>"');
-        if (this.config.autoPush) actions.push('git push');
-        autoGitInstructions = `\n\n注意: タスク完了後、以下のコマンドを実行してください:\n${actions.join(' && ')}\n`;
+        if (this.config.autoCommit) {
+          actions.push(
+            'git add . && git commit -m "task: Auto commit on task completion\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>"',
+          );
+        }
+        if (this.config.autoPush) actions.push("git push");
+        autoGitInstructions = `\n\n注意: タスク完了後、以下のコマンドを実行してください:\n${
+          actions.join(" && ")
+        }\n`;
       }
-      
+
       const enhancedPrompt = `${projectPrefix}${prompt}${ultrathinkText}${autoGitInstructions}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
-      
+
       // Send message to Claude via tmux
-      const modeDescription = this.config.orchestratorMode ? 'orchestrator' : 'normal';
-      this.logger.info(`Sending ${isBufferedPrompt ? 'buffered' : 'single'} prompt (${modeDescription} mode) to tmux session: ${this.config.tmuxSessionName}`);
+      const modeDescription = this.config.orchestratorMode ? "orchestrator" : "normal";
+      this.logger.info(
+        `Sending ${
+          isBufferedPrompt ? "buffered" : "single"
+        } prompt (${modeDescription} mode) to tmux session: ${this.config.tmuxSessionName}`,
+      );
       this.logger.debug(`Enhanced prompt to send: ${enhancedPrompt.substring(0, 300)}...`);
       const success = await this.tmuxManager.sendCommand(enhancedPrompt);
-      
+
       if (success) {
         const _duration = ((Date.now() - startTime) / 1000).toFixed(1);
         await thinkingMessage.delete();
-        await message.react('👀');
-        
+        await message.react("👀");
+
         // Claude will send responses using send-to-discord command
-        
+
         this.stats.messagesProcessed++;
         this.stats.lastActivity = new Date();
       } else {
         await thinkingMessage.edit("❌ 失敗");
-        await message.reply("Claude Codeへの送信に失敗しました。tmuxセッションが正常に動作しているか確認してください。");
+        await message.reply(
+          "Claude Codeへの送信に失敗しました。tmuxセッションが正常に動作しているか確認してください。",
+        );
       }
     } catch (error) {
       this.logger.error(`Error processing message: ${error}`);
@@ -408,65 +437,71 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
   private async addMessageToBuffer(message: Message): Promise<void> {
     const channelId = message.channel.id;
     const currentTime = Date.now();
-    
+
     // Get or create buffer for this channel
     let buffer = this.messageBuffer.get(channelId);
     if (!buffer) {
-      buffer = { 
-        messages: [], 
+      buffer = {
+        messages: [],
         lastMessageTime: currentTime,
-        burstMode: false 
+        burstMode: false,
       };
       this.messageBuffer.set(channelId, buffer);
     }
-    
+
     // Detect burst mode: multiple messages within burst detection window
     const timeSinceLastMessage = currentTime - buffer.lastMessageTime;
     const wasBurstMode = buffer.burstMode;
-    
+
     if (timeSinceLastMessage <= this.BURST_DETECTION_WINDOW_MS && buffer.messages.length > 0) {
       buffer.burstMode = true;
       if (!wasBurstMode) {
-        this.logger.info(`Burst mode activated - messages coming within ${this.BURST_DETECTION_WINDOW_MS}ms`);
+        this.logger.info(
+          `Burst mode activated - messages coming within ${this.BURST_DETECTION_WINDOW_MS}ms`,
+        );
       }
     }
-    
+
     // Add message to buffer
     buffer.messages.push(message);
     buffer.lastMessageTime = currentTime;
-    
-    this.logger.info(`Added message to buffer. Buffer size: ${buffer.messages.length}, Burst mode: ${buffer.burstMode}`);
-    
+
+    this.logger.info(
+      `Added message to buffer. Buffer size: ${buffer.messages.length}, Burst mode: ${buffer.burstMode}`,
+    );
+
     // Check if buffer is full
     if (buffer.messages.length >= this.MAX_BUFFER_SIZE) {
       this.logger.info(`Buffer reached max size (${this.MAX_BUFFER_SIZE}), processing immediately`);
       await this.processBufferedMessages(channelId);
       return;
     }
-    
+
     // Clear existing timer
     if (buffer.timer) {
       clearTimeout(buffer.timer);
     }
-    
+
     // Set dynamic timeout based on burst mode
     const timeout = buffer.burstMode ? this.LONG_TIMEOUT_MS : this.SHORT_TIMEOUT_MS;
     const timeoutDescription = buffer.burstMode ? "long (burst mode)" : "short (single message)";
-    
+
     this.logger.info(`Setting ${timeoutDescription} timeout: ${timeout}ms`);
-    
+
     buffer.timer = setTimeout(async () => {
-      this.logger.info(`Buffer timeout (${timeoutDescription}) reached, processing ${buffer.messages.length} messages`);
+      this.logger.info(
+        `Buffer timeout (${timeoutDescription}) reached, processing ${buffer.messages.length} messages`,
+      );
       await this.processBufferedMessages(channelId);
     }, timeout) as unknown as number;
-    
+
     // Send acknowledgment for the first message
     if (buffer.messages.length === 1) {
-      await message.react('⏳');
-      this.logger.info('Added waiting reaction to first message');
+      await message.react("⏳");
+      this.logger.info("Added waiting reaction to first message");
     }
   }
-  
+
   /**
    * Process all buffered messages for a channel
    */
@@ -475,45 +510,47 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
     if (!buffer || buffer.messages.length === 0) {
       return;
     }
-    
+
     // Clear timer
     if (buffer.timer) {
       clearTimeout(buffer.timer);
       buffer.timer = undefined;
     }
-    
+
     // Get messages and reset buffer state
     const messages = [...buffer.messages];
     const wasBurstMode = buffer.burstMode;
-    
+
     // Reset buffer state
     buffer.messages = [];
     buffer.burstMode = false;
     buffer.lastMessageTime = Date.now();
-    
-    this.logger.info(`Processing ${messages.length} buffered messages (was in burst mode: ${wasBurstMode})`);
-    
+
+    this.logger.info(
+      `Processing ${messages.length} buffered messages (was in burst mode: ${wasBurstMode})`,
+    );
+
     // Combine all message contents
     const combinedPrompt = messages.map((msg, index) => {
       return `[メッセージ ${index + 1} from ${msg.author.username}]: ${msg.content}`;
-    }).join('\n\n');
-    
+    }).join("\n\n");
+
     this.logger.info(`Combined prompt:\n${combinedPrompt.substring(0, 500)}...`);
-    
+
     // Use the last message for context and replies
     const lastMessage = messages[messages.length - 1];
-    
+
     if (!lastMessage) {
-      this.logger.error('No messages to process in buffer');
+      this.logger.error("No messages to process in buffer");
       return;
     }
-    
+
     // Remove waiting reaction from first message
     const firstMessage = messages[0];
     if (firstMessage) {
-      await firstMessage.reactions.cache.get('⏳')?.remove().catch(() => {});
+      await firstMessage.reactions.cache.get("⏳")?.remove().catch(() => {});
     }
-    
+
     // Execute combined prompt
     this.logger.info(`About to execute combined prompt with ${messages.length} messages`);
     this.logger.debug(`Combined prompt length: ${combinedPrompt.length} characters`);
@@ -549,7 +586,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
 
   private async restartSession(message: Message): Promise<void> {
     await message.reply("🔄 Claude セッションを再起動しています...");
-    
+
     try {
       // Kill existing session
       const killCmd = new Deno.Command("tmux", {
@@ -559,7 +596,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
 
       // Create new session
       const success = await this.tmuxManager.createSession();
-      
+
       if (success) {
         await message.reply("✅ Claude セッションが再起動されました。");
       } else {
@@ -588,7 +625,9 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
 • \`Ctrl+B → D\` - セッションから切断
 
 **その他:**
-• 認証ユーザー: ${this.config.authorizedUserId ? `<@${this.config.authorizedUserId}>` : "全ユーザー"}
+• 認証ユーザー: ${
+      this.config.authorizedUserId ? `<@${this.config.authorizedUserId}>` : "全ユーザー"
+    }
 • セッション名: ${this.config.tmuxSessionName}`;
 
     await message.reply(help);
@@ -617,7 +656,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
   }
 
   private pendingMessageInterval?: number;
-  
+
   /**
    * Start monitoring for pending messages from send-to-discord command
    */
@@ -625,29 +664,36 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
     const pendingFile = `/tmp/claude-discord-pending-${this.config.tmuxSessionName}.json`;
     this.logger.info(`Starting pending message monitor for: ${pendingFile}`);
     this.logger.info(`Target channel ID: ${this.targetChannelId}`);
-    
+
     this.pendingMessageInterval = setInterval(async () => {
       try {
         const content = await Deno.readTextFile(pendingFile);
         this.logger.info(`Found pending message file, content length: ${content.length}`);
-        
+
         const message = JSON.parse(content);
         this.logger.info(`Parsed message type: ${message.type}, has content: ${!!message.content}`);
-        
+
         if (message && message.content && this.targetChannelId) {
           const channel = this.client.channels.cache.get(this.targetChannelId);
-          this.logger.info(`Channel found: ${!!channel}, has send method: ${channel && "send" in channel}`);
-          
+          this.logger.info(
+            `Channel found: ${!!channel}, has send method: ${channel && "send" in channel}`,
+          );
+
           if (channel && "send" in channel) {
-            await (channel as { send: (content: string) => Promise<unknown> }).send(message.content);
+            await (channel as { send: (content: string) => Promise<unknown> }).send(
+              message.content,
+            );
             this.logger.info("Successfully sent pending message to Discord");
           } else {
             this.logger.error("Channel not found or doesn't have send method");
           }
         } else {
-          this.logger.warn(`Invalid message or missing target channel. Message: ${!!message}, Content: ${!!message?.content}, ChannelID: ${this.targetChannelId}`);
+          this.logger.warn(
+            `Invalid message or missing target channel. Message: ${!!message}, Content: ${!!message
+              ?.content}, ChannelID: ${this.targetChannelId}`,
+          );
         }
-        
+
         // Clean up the file after processing
         await Deno.remove(pendingFile);
         this.logger.info("Cleaned up pending message file");
@@ -664,36 +710,37 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
 
   async stop(): Promise<void> {
     this.logger.info("Stopping Claude Discord Bot...");
-    
+
     try {
       // Stop pending message monitor
       if (this.pendingMessageInterval) {
         clearInterval(this.pendingMessageInterval);
       }
-      
+
       // Send shutdown message to channel if possible
       if (this.targetChannelId) {
         try {
           const channel = this.client.channels.cache.get(this.targetChannelId);
           if (channel && "send" in channel) {
-            await (channel as { send: (content: string) => Promise<unknown> }).send("🔄 Claude Discord Bot をシャットダウンしています...");
+            await (channel as { send: (content: string) => Promise<unknown> }).send(
+              "🔄 Claude Discord Bot をシャットダウンしています...",
+            );
           }
         } catch {
           // Ignore errors when sending shutdown message
         }
       }
-      
+
       // Kill tmux session
       await this.tmuxManager.sessionExists() && await this.killTmuxSession();
-      
-      
+
       this.client.destroy();
       this.logger.info("Bot shutdown completed");
     } catch (error) {
       this.logger.error(`Error during shutdown: ${error}`);
     }
   }
-  
+
   /**
    * Kill tmux session
    */
@@ -709,7 +756,6 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
       this.logger.warn(`Failed to kill tmux session: ${error}`);
     }
   }
-  
 }
 
 export class ClaudeDiscordBotCLI {
@@ -718,7 +764,19 @@ export class ClaudeDiscordBotCLI {
   async run(args: string[]): Promise<void> {
     const parsed = parseArgs(args, {
       string: ["channel", "project", "log-level", "session"],
-      boolean: ["help", "version", "verbose", "global", "ultrathink", "dangerously-permit", "resume", "continue", "orch", "auto-commit", "auto-push"],
+      boolean: [
+        "help",
+        "version",
+        "verbose",
+        "global",
+        "ultrathink",
+        "dangerously-permit",
+        "resume",
+        "continue",
+        "orch",
+        "auto-commit",
+        "auto-push",
+      ],
       alias: {
         h: "help",
         v: "version",
@@ -812,13 +870,15 @@ ${colors.yellow("EXAMPLES:")}
 `);
   }
 
-  private async initCommand(args: {_: unknown[], global?: boolean, project?: string}): Promise<void> {
+  private async initCommand(
+    args: { _: unknown[]; global?: boolean; project?: string },
+  ): Promise<void> {
     console.log(colors.cyan("\n🤖 Claude Discord Bot セットアップ\n"));
 
     const projectPath = args.project || Deno.cwd();
     const useGlobal = args.global;
     let targetPath: string;
-    
+
     if (useGlobal) {
       console.log(colors.yellow("🌐 グローバルモードでセットアップ中..."));
       const homeDir = Deno.env.get("HOME") || Deno.env.get("USERPROFILE") || "/tmp";
@@ -838,8 +898,10 @@ ${colors.yellow("EXAMPLES:")}
     // Interactive configuration
     const config = this.interactiveSetup(targetPath, useGlobal as boolean);
 
-    // Create configuration files  
-    const projectInfo = useGlobal ? { name: "global", language: "TypeScript" } : await this.detectProject(projectPath as string);
+    // Create configuration files
+    const projectInfo = useGlobal
+      ? { name: "global", language: "TypeScript" }
+      : await this.detectProject(projectPath as string);
     await this.createConfigFiles(config, projectInfo);
 
     console.log(colors.green("\n✅ セットアップ完了！"));
@@ -848,13 +910,15 @@ ${colors.yellow("EXAMPLES:")}
     console.log(`2. ${colors.cyan("claude-discord-bot start")} でBot起動`);
   }
 
-  protected async detectProject(projectPath: string): Promise<{name: string, language: string, framework?: string}> {
+  protected async detectProject(
+    projectPath: string,
+  ): Promise<{ name: string; language: string; framework?: string }> {
     const packageJsonPath = join(projectPath, "package.json");
     const denoJsonPath = join(projectPath, "deno.json");
     const cargoTomlPath = join(projectPath, "Cargo.toml");
     const requirementsPath = join(projectPath, "requirements.txt");
 
-    let projectInfo: {name: string, language: string, framework?: string} = {
+    let projectInfo: { name: string; language: string; framework?: string } = {
       name: "unknown-project",
       language: "unknown",
       framework: undefined,
@@ -903,7 +967,12 @@ ${colors.yellow("EXAMPLES:")}
     return projectInfo;
   }
 
-  private detectJSFramework(packageJson: {dependencies?: Record<string, unknown>, devDependencies?: Record<string, unknown>}): string | null {
+  private detectJSFramework(
+    packageJson: {
+      dependencies?: Record<string, unknown>;
+      devDependencies?: Record<string, unknown>;
+    },
+  ): string | null {
     const deps = { ...(packageJson.dependencies || {}), ...(packageJson.devDependencies || {}) };
 
     if (deps.react) return "React";
@@ -1072,7 +1141,20 @@ LOG_LEVEL=info
     return existingContent ? existingContent + claudeBotSection : claudeBotSection.trim();
   }
 
-  private async startCommand(args: {_: unknown[], global?: boolean, project?: string, ultrathink?: boolean, "dangerously-permit"?: boolean, resume?: boolean, continue?: boolean, orch?: boolean, "auto-commit"?: boolean, "auto-push"?: boolean}): Promise<void> {
+  private async startCommand(
+    args: {
+      _: unknown[];
+      global?: boolean;
+      project?: string;
+      ultrathink?: boolean;
+      "dangerously-permit"?: boolean;
+      resume?: boolean;
+      continue?: boolean;
+      orch?: boolean;
+      "auto-commit"?: boolean;
+      "auto-push"?: boolean;
+    },
+  ): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
 
     const projectPath = args.project || Deno.cwd();
@@ -1087,7 +1169,7 @@ LOG_LEVEL=info
       const homeDir = Deno.env.get("HOME") || Deno.env.get("USERPROFILE") || "/tmp";
       const globalDir = join(homeDir, ".claude-discord-bot");
       configPath = join(globalDir, ".env");
-      
+
       if (!await exists(configPath)) {
         console.log(colors.red("❌ グローバル設定が見つかりません"));
         console.log("まず 'claude-discord-bot init --global' を実行してください");
@@ -1095,7 +1177,7 @@ LOG_LEVEL=info
       }
     } else {
       configPath = envPath;
-      
+
       if (!await exists(envPath)) {
         console.log(colors.red("❌ .env ファイルが見つかりません"));
         console.log("まず 'claude-discord-bot init' を実行してください");
@@ -1153,10 +1235,10 @@ LOG_LEVEL=info
       const workingDir = useGlobal ? Deno.cwd() : projectPath;
       const bot = new ClaudeDiscordBot(config, workingDir as string);
       await bot.start();
-      
+
       console.log(colors.green("✅ Bot が正常に起動しました"));
       console.log(`🔗 tmuxセッション接続: tmux attach -t ${config.tmuxSessionName}`);
-      
+
       // Handle graceful shutdown
       const shutdown = async () => {
         console.log("\n🛑 シャットダウン中...");
@@ -1167,35 +1249,36 @@ LOG_LEVEL=info
       // Handle Ctrl+C
       Deno.addSignalListener("SIGINT", shutdown);
       Deno.addSignalListener("SIGTERM", shutdown);
-
     } catch (error) {
       console.log(colors.red(`❌ Bot の起動に失敗しました: ${error}`));
       console.log("Discord Bot Token や Guild ID が正しく設定されているか確認してください");
     }
   }
 
-  private async statusCommand(): Promise<void> {
+  private statusCommand(): void {
     console.log(colors.cyan("📊 Claude Discord Bot ステータス"));
     console.log("ステータス確認機能は実装中です");
   }
 
-  private async stopCommand(): Promise<void> {
+  private stopCommand(): void {
     console.log(colors.yellow("⏹️  Claude Discord Bot 停止中..."));
     console.log("停止機能は実装中です");
   }
 
-  private async updateCommand(): Promise<void> {
+  private updateCommand(): void {
     console.log(colors.cyan("📦 CLI更新確認中..."));
     console.log("更新機能は実装中です");
   }
 
-  private async sendToDiscordCommand(args: {_: unknown[], session?: string}): Promise<void> {
-    const message = (args as {_: unknown[]})._[1] as string;
+  private async sendToDiscordCommand(args: { _: unknown[]; session?: string }): Promise<void> {
+    const message = (args as { _: unknown[] })._[1] as string;
     const sessionName = args.session || Deno.env.get("TMUX_SESSION_NAME") || "claude-main";
-    
+
     if (!message) {
       console.log(colors.red("❌ メッセージが指定されていません"));
-      console.log("使用方法: claude-discord-bot send-to-discord \"メッセージ内容\" [--session セッション名]");
+      console.log(
+        '使用方法: claude-discord-bot send-to-discord "メッセージ内容" [--session セッション名]',
+      );
       return;
     }
 
@@ -1204,13 +1287,17 @@ LOG_LEVEL=info
       const pendingMessage = {
         content: message,
         timestamp: new Date().toISOString(),
-        type: "claude-response"
+        type: "claude-response",
       };
 
       const pendingFile = `/tmp/claude-discord-pending-${sessionName}.json`;
-      
+
       await Deno.writeTextFile(pendingFile, JSON.stringify(pendingMessage, null, 2));
-      console.log(colors.green(`✅ メッセージをDiscordに送信キューに追加しました (セッション: ${sessionName})`));
+      console.log(
+        colors.green(
+          `✅ メッセージをDiscordに送信キューに追加しました (セッション: ${sessionName})`,
+        ),
+      );
     } catch (error) {
       console.log(colors.red(`❌ メッセージの送信に失敗しました: ${error}`));
     }

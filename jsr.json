@@ -33,7 +33,7 @@
     "include": [
       "mod.ts",
       "cli.ts",
-      "cli-standalone.ts", 
+      "cli-standalone.ts",
       "src/",
       "templates/",
       "PACKAGE-README.md",

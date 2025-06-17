@@ -30,13 +30,15 @@ export class ClaudeCodeExecutor {
    */
   async executePrompt(prompt: string, channelId: string): Promise<ClaudeResponse> {
     const startTime = Date.now();
-    this.logger.info(`ClaudeCodeExecutor: Starting execution for prompt: ${prompt.substring(0, 100)}...`);
+    this.logger.info(
+      `ClaudeCodeExecutor: Starting execution for prompt: ${prompt.substring(0, 100)}...`,
+    );
 
     try {
       // Ensure tmux session exists
       const sessionExists = await this.tmuxManager.hasSession();
       this.logger.debug(`Tmux session exists: ${sessionExists}`);
-      
+
       if (!sessionExists) {
         this.logger.info("Creating new tmux session for Claude");
         const created = await this.tmuxManager.createSession(this.projectContext.rootPath);
@@ -49,7 +51,7 @@ export class ClaudeCodeExecutor {
             executionTime: Date.now() - startTime,
           };
         }
-        
+
         // Setup Discord response helper
         await this.setupDiscordHelper();
       }
@@ -82,7 +84,9 @@ export class ClaudeCodeExecutor {
       // Even if we don't get a response through the bridge, the task might still be successful
       // if Claude has already sent responses directly via discord-respond.ts
       if (!response) {
-        this.logger.info("No response received via Discord bridge, but Claude may have responded directly");
+        this.logger.info(
+          "No response received via Discord bridge, but Claude may have responded directly",
+        );
         return {
           content: "✅ タスクが完了しました（Claudeから直接応答済み）",
           success: true,
@@ -113,8 +117,8 @@ export class ClaudeCodeExecutor {
    * Create enhanced prompt that instructs Claude to respond via Discord
    */
   private createEnhancedPrompt(userPrompt: string): string {
-    const ultrathinkText = this.enableUltraThink ? '\n\nultrathink\n' : '';
-    
+    const ultrathinkText = this.enableUltraThink ? "\n\nultrathink\n" : "";
+
     return `${userPrompt}${ultrathinkText}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
@@ -127,13 +131,13 @@ export class ClaudeCodeExecutor {
   private async setupDiscordHelper(): Promise<void> {
     const helperScript = DiscordAPIBridge.generateClaudeHelperScript();
     const scriptPath = `${this.projectContext.rootPath}/discord-respond.ts`;
-    
+
     await Deno.writeTextFile(scriptPath, helperScript);
-    
+
     // Make it executable
     await this.tmuxManager.sendPrompt(`chmod +x ${scriptPath}`);
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    
+
     this.logger.info("Discord helper script created");
   }
 
@@ -300,7 +304,7 @@ export class ClaudeCodeExecutor {
   private wrapInCodeBlock(content: string): string {
     // Try to detect language for syntax highlighting
     const language = this.detectLanguage(content);
-    return `\`\`\`${language || 'text'}\n${content}\n\`\`\``;
+    return `\`\`\`${language || "text"}\n${content}\n\`\`\``;
   }
 
   /**

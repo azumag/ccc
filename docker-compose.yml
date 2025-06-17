@@ -1,13 +1,13 @@
-version: '3.8'
+version: "3.8"
 
 services:
   claude-discord-bot:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     container_name: claude-discord-bot
     restart: unless-stopped
-    
+
     # Environment variables from .env file
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
@@ -16,27 +16,27 @@ services:
       - DISCORD_CHANNEL_NAME=${DISCORD_CHANNEL_NAME:-claude}
       - TMUX_SESSION_NAME=${TMUX_SESSION_NAME:-claude-main}
       - LOG_LEVEL=${LOG_LEVEL:-info}
-    
+
     # Volumes for persistent data
     volumes:
-      - ./project:/app/project:rw     # Project files
-      - ./logs:/app/logs:rw           # Log files
-      - claude_cache:/root/.cache     # Deno cache
-    
+      - ./project:/app/project:rw # Project files
+      - ./logs:/app/logs:rw # Log files
+      - claude_cache:/root/.cache # Deno cache
+
     # Required for tmux to work properly
     tty: true
     stdin_open: true
-    
+
     # Resource limits
     deploy:
       resources:
         limits:
           memory: 512M
-          cpus: '0.5'
+          cpus: "0.5"
         reservations:
           memory: 128M
-          cpus: '0.1'
-    
+          cpus: "0.1"
+
     # Health check
     healthcheck:
       test: ["CMD", "claude-discord-bot", "--help"]
@@ -44,39 +44,39 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    
+
     networks:
       - claude-network
-    
+
     # Labels for better management
     labels:
       - "com.claude-discord-bot.service=main"
       - "com.claude-discord-bot.version=1.0.0"
 
 # Optional: Redis for caching (future enhancement)
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: claude-redis
-  #   restart: unless-stopped
-  #   volumes:
-  #     - redis_data:/data
-  #   networks:
-  #     - claude-network
-  #   command: redis-server --appendonly yes
+# redis:
+#   image: redis:7-alpine
+#   container_name: claude-redis
+#   restart: unless-stopped
+#   volumes:
+#     - redis_data:/data
+#   networks:
+#     - claude-network
+#   command: redis-server --appendonly yes
 
 # Optional: PostgreSQL for data persistence (future enhancement)
-  # postgres:
-  #   image: postgres:15-alpine
-  #   container_name: claude-postgres
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_DB: claude_bot
-  #     POSTGRES_USER: claude
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   networks:
-  #     - claude-network
+# postgres:
+#   image: postgres:15-alpine
+#   container_name: claude-postgres
+#   restart: unless-stopped
+#   environment:
+#     POSTGRES_DB: claude_bot
+#     POSTGRES_USER: claude
+#     POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+#   volumes:
+#     - postgres_data:/var/lib/postgresql/data
+#   networks:
+#     - claude-network
 
 networks:
   claude-network:
@@ -89,12 +89,12 @@ volumes:
     driver: local
     labels:
       - "com.claude-discord-bot.volume=cache"
-  
+
   # redis_data:
   #   driver: local
   #   labels:
   #     - "com.claude-discord-bot.volume=redis"
-  
+
   # postgres_data:
   #   driver: local
   #   labels:

@@ -18,10 +18,10 @@ export { SimpleLogger } from "./src/logger.ts";
 export type {
   BotConfig,
   BotStats,
-  LogLevel,
-  SpecialCommand,
-  ProjectContext,
   CommandResult,
+  LogLevel,
+  ProjectContext,
+  SpecialCommand,
 } from "./src/types.ts";
 
 // Export utilities
@@ -50,11 +50,11 @@ export async function quickSetup(
 ): Promise<typeof options & { projectPath: string }> {
   const { ClaudeDiscordBotCLI } = await import("./cli.ts");
   const cli = new ClaudeDiscordBotCLI();
-  
+
   const config = {
     projectPath,
     channelName: options.channelName || "claude",
-    tmuxSessionName: options.tmuxSessionName || "claude-main", 
+    tmuxSessionName: options.tmuxSessionName || "claude-main",
     logLevel: options.logLevel || "info",
     discordToken: options.discordToken,
     guildId: options.guildId,

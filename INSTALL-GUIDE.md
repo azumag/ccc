@@ -39,12 +39,12 @@ deno run --allow-all https://raw.githubusercontent.com/azumag/ccc/main/cli.ts in
 
 ```typescript
 // TypeScript/JavaScript プロジェクトで使用
-import { quickSetup, ClaudeDiscordBotCLI } from "jsr:@azumag/claude-discord-bot";
+import { ClaudeDiscordBotCLI, quickSetup } from "jsr:@azumag/claude-discord-bot";
 
 // 簡単セットアップ
 await quickSetup("./my-project", {
   channelName: "claude-dev",
-  logLevel: "debug"
+  logLevel: "debug",
 });
 
 // 詳細制御
@@ -95,12 +95,14 @@ claude-discord-bot --help
 Claude Discord Bot CLI は既存のプロジェクトを安全に扱います：
 
 ✅ **保護されるファイル**:
+
 - `README.md` - 既存のドキュメントを保持
 - `src/` - 既存のソースコードを保持
 - `.env` - 既存の環境変数に追記のみ
 - `.env.example` - 既存の例に追記のみ
 
 ✅ **作成されるファイル**:
+
 - `deno.json` - Deno 設定（必要な場合のみ）
 - 環境変数設定の追加
 

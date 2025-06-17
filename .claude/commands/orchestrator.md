@@ -37,24 +37,28 @@ Split complex tasks into sequential steps, where each step can contain multiple 
 When given "analyze test lint and commit":
 
 **Step 1: Initial Analysis** (1 subtask)
+
 - Analyze project structure to understand test/lint setup
 
 **Step 2: Quality Checks** (parallel subtasks)
+
 - Run tests and capture results
 - Run linting and type checking
 - Check git status and changes
 
 **Step 3: Fix Issues** (parallel subtasks, using Step 2 results)
+
 - Fix linting errors found in Step 2
 - Fix type errors found in Step 2
 - Prepare commit message based on changes
-*Review: If no errors found in Step 2, skip fixes and proceed to commit*
+  _Review: If no errors found in Step 2, skip fixes and proceed to commit_
 
 **Step 4: Final Validation** (parallel subtasks)
+
 - Re-run tests to ensure fixes work
 - Re-run lint to verify all issues resolved
 - Create commit with verified changes
-*Review: If Step 3 had no fixes, simplify to just creating commit*
+  _Review: If Step 3 had no fixes, simplify to just creating commit_
 
 ## Key Benefits
 

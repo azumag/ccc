@@ -87,7 +87,10 @@ Deno.test({
       const claudeExecutor = new ClaudeCodeExecutor(tmuxManager, projectContext, logger);
 
       // Execute a simple prompt that should work
-      const response = await claudeExecutor.executePrompt("echo 'Hello from Claude'", "test-channel-id");
+      const response = await claudeExecutor.executePrompt(
+        "echo 'Hello from Claude'",
+        "test-channel-id",
+      );
 
       assertExists(response);
       assertEquals(typeof response.success, "boolean");

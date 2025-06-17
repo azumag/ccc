@@ -39,12 +39,12 @@ npx --yes jsr:@azumag/claude-discord-bot init
 ### 方法3: プログラム内で使用
 
 ```typescript
-import { quickSetup, ClaudeDiscordBotCLI } from "jsr:@azumag/claude-discord-bot";
+import { ClaudeDiscordBotCLI, quickSetup } from "jsr:@azumag/claude-discord-bot";
 
 // 簡単セットアップ
 await quickSetup("./my-project", {
   channelName: "claude-dev",
-  logLevel: "debug"
+  logLevel: "debug",
 });
 
 // または詳細制御
@@ -82,12 +82,14 @@ claude-discord-bot status
 ### 既存プロジェクトでの安全性
 
 ✅ **保護されるファイル**:
+
 - `README.md` - 既存のドキュメントを保持
 - `src/` - 既存のソースコードを保持
 - `.env` - 既存の環境変数に追記のみ
 - `.env.example` - 既存の例に追記のみ
 
 ✅ **作成されるファイル**:
+
 - `deno.json` - Deno 設定（必要な場合のみ）
 - 環境変数設定の追加
 
@@ -96,17 +98,17 @@ claude-discord-bot status
 ### プログラマティック API
 
 ```typescript
-import { 
-  ClaudeDiscordBotCLI,
+import {
   ClaudeDiscordBot,
+  ClaudeDiscordBotCLI,
+  quickSetup,
   TmuxSessionManager,
-  quickSetup 
 } from "jsr:@azumag/claude-discord-bot";
 
 // 高速セットアップ
 const config = await quickSetup("./project", {
   channelName: "ai-dev",
-  logLevel: "debug"
+  logLevel: "debug",
 });
 
 // カスタム CLI インスタンス
@@ -126,12 +128,7 @@ const bot = new ClaudeDiscordBot({
 完全な型定義が含まれています：
 
 ```typescript
-import type { 
-  BotConfig, 
-  BotStats, 
-  LogLevel,
-  ProjectContext 
-} from "jsr:@azumag/claude-discord-bot";
+import type { BotConfig, BotStats, LogLevel, ProjectContext } from "jsr:@azumag/claude-discord-bot";
 
 const config: BotConfig = {
   discordToken: "...",
