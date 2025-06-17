@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.10.3";
+const VERSION = "1.10.4";
 
 interface CLIConfig {
   projectPath: string;
@@ -262,40 +262,54 @@ class ClaudeDiscordBot {
   }
 
   private async handleMessage(message: Message): Promise<void> {
-    this.logger.debug(`Message received from ${message.author.tag} (${message.author.id}) in channel ${message.channelId}, bot: ${message.author.bot}, webhook: ${message.webhookId ? 'true' : 'false'}`);
-    
-    // Skip messages from this bot itself
-    if (message.author.id === this.client.user?.id) {
-      this.logger.debug(`Skipping message from self: ${message.author.id}`);
-      return;
+    try {
+      this.logger.info(`[ENTRY] handleMessage called for ${message.author.tag}`);
+      this.logger.debug(`Message received from ${message.author.tag} (${message.author.id}) in channel ${message.channelId}, bot: ${message.author.bot}, webhook: ${message.webhookId ? 'true' : 'false'}`);
+      
+      // Skip messages from this bot itself
+      if (message.author.id === this.client.user?.id) {
+        this.logger.debug(`Skipping message from self: ${message.author.id}`);
+        return;
+      }
+
+      // Check if message is in target channel
+      if (message.channelId !== this.targetChannelId) {
+        this.logger.debug(`Message not in target channel. Expected: ${this.targetChannelId}, Got: ${message.channelId}`);
+        return;
+      }
+
+      this.logger.info(`Processing message from ${message.author.tag} (webhook: ${message.webhookId ? 'yes' : 'no'}): ${message.content.substring(0, 100)}...`);
+
+      // Check authorization if configured
+      if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId) {
+        this.logger.debug(`Unauthorized user: ${message.author.tag}`);
+        return;
+      }
+
+      this.logger.info(`Full message content: "${message.content}"`);
+      
+      // Handle special commands
+      this.logger.info("Checking for special commands...");
+      if (message.content.startsWith("/")) {
+        this.logger.info(`Executing special command: ${message.content}`);
+        await this.handleSpecialCommand(message);
+        return;
+      }
+
+      this.logger.info("No special command detected, proceeding to Claude execution");
+      // Process regular message
+      await this.processMessage(message);
+      this.logger.info(`[EXIT] handleMessage completed for ${message.author.tag}`);
+    } catch (error) {
+      this.logger.error(`Error in handleMessage: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`Error stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
+      
+      try {
+        await message.reply(`❌ メッセージ処理中にエラーが発生しました: ${error instanceof Error ? error.message : String(error)}`);
+      } catch (replyError) {
+        this.logger.error(`Failed to send error reply: ${replyError}`);
+      }
     }
-
-    // Check if message is in target channel
-    if (message.channelId !== this.targetChannelId) {
-      this.logger.debug(`Message not in target channel. Expected: ${this.targetChannelId}, Got: ${message.channelId}`);
-      return;
-    }
-
-    this.logger.info(`Processing message from ${message.author.tag} (webhook: ${message.webhookId ? 'yes' : 'no'}): ${message.content.substring(0, 100)}...`);
-
-    // Check authorization if configured
-    if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId) {
-      this.logger.debug(`Unauthorized user: ${message.author.tag}`);
-      return;
-    }
-
-    this.logger.debug(`Full message content: "${message.content}"`);
-    
-    // Handle special commands
-    if (message.content.startsWith("/")) {
-      this.logger.info(`Executing special command: ${message.content}`);
-      await this.handleSpecialCommand(message);
-      return;
-    }
-
-    this.logger.info("No special command detected, proceeding to Claude execution");
-    // Process regular message
-    await this.processMessage(message);
   }
 
   private async handleSpecialCommand(message: Message): Promise<void> {

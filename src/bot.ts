@@ -340,26 +340,41 @@ export class ClaudeDiscordBot {
    * Handle incoming channel messages
    */
   private async handleChannelMessage(message: Message): Promise<void> {
-    const content = message.content.trim();
-    this.stats.messagesProcessed++;
-    this.stats.lastActivity = new Date();
+    try {
+      this.logger.info(`[ENTRY] handleChannelMessage called for ${message.author.tag}`);
+      
+      const content = message.content.trim();
+      this.stats.messagesProcessed++;
+      this.stats.lastActivity = new Date();
 
-    this.logger.info(
-      `Processing message from ${message.author.tag}: ${content.substring(0, 100)}...`,
-    );
-    this.logger.debug(`Full message content: "${content}"`);
+      this.logger.info(
+        `Processing message from ${message.author.tag}: ${content.substring(0, 100)}...`,
+      );
+      this.logger.info(`Full message content: "${content}"`);
 
-    // Check for special commands
-    const specialCommand = this.specialCommands.find((cmd) => content.startsWith(cmd.name));
-    if (specialCommand) {
-      this.logger.info(`Executing special command: ${specialCommand.name}`);
-      await specialCommand.handler(message);
-      return;
+      // Check for special commands
+      this.logger.info("Checking for special commands...");
+      const specialCommand = this.specialCommands.find((cmd) => content.startsWith(cmd.name));
+      if (specialCommand) {
+        this.logger.info(`Executing special command: ${specialCommand.name}`);
+        await specialCommand.handler(message);
+        return;
+      }
+
+      this.logger.info("No special command detected, proceeding to Claude execution");
+      // Handle regular Claude prompt
+      await this.executeClaudePrompt(message, content);
+      this.logger.info(`[EXIT] handleChannelMessage completed for ${message.author.tag}`);
+    } catch (error) {
+      this.logger.error(`Error in handleChannelMessage: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(`Error stack: ${error instanceof Error ? error.stack : 'No stack trace'}`);
+      
+      try {
+        await message.reply(`❌ メッセージ処理中にエラーが発生しました: ${error instanceof Error ? error.message : String(error)}`);
+      } catch (replyError) {
+        this.logger.error(`Failed to send error reply: ${replyError}`);
+      }
     }
-
-    this.logger.info("No special command detected, proceeding to Claude execution");
-    // Handle regular Claude prompt
-    await this.executeClaudePrompt(message, content);
   }
 
   /**
