@@ -8,7 +8,7 @@ import { assertEquals, assertStringIncludes } from "@std/assert";
 // Mock logger for testing
 class MockLogger {
   public logs: string[] = [];
-  
+
   info(message: string) {
     this.logs.push(`[INFO] ${message}`);
   }
@@ -21,7 +21,7 @@ class MockLogger {
   error(message: string) {
     this.logs.push(`[ERROR] ${message}`);
   }
-  
+
   clearLogs() {
     this.logs = [];
   }
@@ -32,10 +32,10 @@ class TestTmuxManager {
   public commandsExecuted: string[][] = [];
   public shouldFailSendKeys = false;
   public shouldFailEnter = false;
-  
+
   constructor(
     private sessionName: string,
-    private logger: MockLogger
+    private logger: MockLogger,
   ) {}
 
   async sendCommand(command: string): Promise<boolean> {
@@ -83,10 +83,10 @@ class ImprovedTmuxManager {
   public commandsExecuted: string[][] = [];
   public shouldFailSendKeys = false;
   public shouldFailEnter = false;
-  
+
   constructor(
     private sessionName: string,
-    private logger: MockLogger
+    private logger: MockLogger,
   ) {}
 
   async sendCommand(command: string): Promise<boolean> {
@@ -137,13 +137,13 @@ Deno.test("TmuxManager - Enter key is sent after command", async () => {
 
   assertEquals(result, true);
   assertEquals(manager.commandsExecuted.length, 2);
-  
+
   // First command should be the actual message
   assertEquals(manager.commandsExecuted[0], ["send-keys", "-t", "test-session", "echo test"]);
-  
+
   // Second command should be Enter
   assertEquals(manager.commandsExecuted[1], ["send-keys", "-t", "test-session", "Enter"]);
-  
+
   // Check logs
   assertStringIncludes(logger.logs.join(" "), "Successfully sent command and Enter");
 });
@@ -156,7 +156,7 @@ Deno.test("TmuxManager - handles commands starting with dash", async () => {
 
   assertEquals(result, true);
   assertEquals(manager.commandsExecuted.length, 2);
-  
+
   // This test shows the potential issue - tmux might interpret --help as an option
   // The command is sent without proper protection
   assertEquals(manager.commandsExecuted[0], ["send-keys", "-t", "test-session", "--help"]);
@@ -172,11 +172,11 @@ Deno.test("TmuxManager - Enter key sending failure", async () => {
 
   assertEquals(result, false);
   assertEquals(manager.commandsExecuted.length, 2);
-  
+
   // Command was sent but Enter failed
   assertEquals(manager.commandsExecuted[0], ["send-keys", "-t", "test-session", "test command"]);
   assertEquals(manager.commandsExecuted[1], ["send-keys", "-t", "test-session", "Enter"]);
-  
+
   // Check error log
   assertStringIncludes(logger.logs.join(" "), "Failed to send Enter key");
 });
@@ -190,10 +190,10 @@ Deno.test("TmuxManager - Command text sending failure", async () => {
 
   assertEquals(result, false);
   assertEquals(manager.commandsExecuted.length, 1);
-  
+
   // Only the failed command was attempted
   assertEquals(manager.commandsExecuted[0], ["send-keys", "-t", "test-session", "test command"]);
-  
+
   // Check error log
   assertStringIncludes(logger.logs.join(" "), "Failed to send command text");
 });
@@ -206,7 +206,7 @@ Deno.test("TmuxManager - Empty command handling", async () => {
 
   assertEquals(result, true);
   assertEquals(manager.commandsExecuted.length, 2);
-  
+
   // Command should be trimmed to empty string
   assertEquals(manager.commandsExecuted[0], ["send-keys", "-t", "test-session", ""]);
   assertEquals(manager.commandsExecuted[1], ["send-keys", "-t", "test-session", "Enter"]);
@@ -220,13 +220,13 @@ Deno.test("ImprovedTmuxManager - uses option terminator and C-m", async () => {
 
   assertEquals(result, true);
   assertEquals(manager.commandsExecuted.length, 2);
-  
+
   // Command should include -- option terminator
   assertEquals(manager.commandsExecuted[0], ["send-keys", "-t", "test-session", "--", "--help"]);
-  
+
   // Enter should use C-m instead of Enter
   assertEquals(manager.commandsExecuted[1], ["send-keys", "-t", "test-session", "C-m"]);
-  
+
   assertStringIncludes(logger.logs.join(" "), "Successfully sent command and Enter");
 });
 
@@ -239,12 +239,16 @@ Deno.test("ImprovedTmuxManager - handles complex prompts", async () => {
 
   assertEquals(result, true);
   assertEquals(manager.commandsExecuted.length, 2);
-  
+
   // Command should include -- option terminator
   assertEquals(manager.commandsExecuted[0], [
-    "send-keys", "-t", "test-session", "--", complexPrompt
+    "send-keys",
+    "-t",
+    "test-session",
+    "--",
+    complexPrompt,
   ]);
-  
+
   // Enter should use C-m
   assertEquals(manager.commandsExecuted[1], ["send-keys", "-t", "test-session", "C-m"]);
 });

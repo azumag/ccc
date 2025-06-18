@@ -686,49 +686,80 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
    * Start monitoring for pending messages from send-to-discord command
    */
   private startPendingMessageMonitor(): void {
-    const pendingFile = `/tmp/claude-discord-pending-${this.config.tmuxSessionName}.json`;
-    this.logger.info(`Starting pending message monitor for: ${pendingFile}`);
+    const pendingFilePattern = `/tmp/claude-discord-pending-${this.config.tmuxSessionName}`;
+    this.logger.info(`Starting pending message monitor for pattern: ${pendingFilePattern}`);
     this.logger.info(`Target channel ID: ${this.targetChannelId}`);
 
     this.pendingMessageInterval = setInterval(async () => {
       try {
-        const content = await Deno.readTextFile(pendingFile);
-        this.logger.info(`Found pending message file, content length: ${content.length}`);
+        // Check for both old format and new chunk format files
+        const files = [];
 
-        const message = JSON.parse(content);
-        this.logger.info(`Parsed message type: ${message.type}, has content: ${!!message.content}`);
+        // Check for old format file
+        const oldFormatFile = `${pendingFilePattern}.json`;
+        try {
+          await Deno.stat(oldFormatFile);
+          files.push({ path: oldFormatFile, index: 0 });
+        } catch {
+          // File doesn't exist
+        }
 
-        if (message && message.content && this.targetChannelId) {
-          const channel = this.client.channels.cache.get(this.targetChannelId);
-          this.logger.info(
-            `Channel found: ${!!channel}, has send method: ${channel && "send" in channel}`,
-          );
-
-          if (channel && "send" in channel) {
-            await (channel as { send: (content: string) => Promise<unknown> }).send(
-              message.content,
-            );
-            this.logger.info("Successfully sent pending message to Discord");
-          } else {
-            this.logger.error("Channel not found or doesn't have send method");
+        // Check for chunk format files
+        for (let i = 1; i <= 10; i++) { // Check up to 10 chunks
+          const chunkFile = `${pendingFilePattern}-${i}.json`;
+          try {
+            await Deno.stat(chunkFile);
+            files.push({ path: chunkFile, index: i });
+          } catch {
+            // File doesn't exist
           }
-        } else {
-          this.logger.warn(
-            `Invalid message or missing target channel. Message: ${!!message}, Content: ${!!message
-              ?.content}, ChannelID: ${this.targetChannelId}`,
-          );
         }
 
-        // Clean up the file after processing
-        await Deno.remove(pendingFile);
-        this.logger.info("Cleaned up pending message file");
-      } catch (error) {
-        // Only log if it's not a file not found error
-        if (error instanceof Deno.errors.NotFound) {
-          // File doesn't exist - that's normal, don't spam logs
-        } else {
-          this.logger.debug(`Error reading pending file: ${error}`);
+        // Sort files by index to process in order
+        files.sort((a, b) => a.index - b.index);
+
+        for (const file of files) {
+          try {
+            const content = await Deno.readTextFile(file.path);
+            this.logger.info(
+              `Found pending message file: ${file.path}, content length: ${content.length}`,
+            );
+
+            const message = JSON.parse(content);
+            this.logger.info(
+              `Parsed message type: ${message.type}, has content: ${!!message.content}`,
+            );
+
+            if (message && message.content && this.targetChannelId) {
+              const channel = this.client.channels.cache.get(this.targetChannelId);
+              this.logger.info(
+                `Channel found: ${!!channel}, has send method: ${channel && "send" in channel}`,
+              );
+
+              if (channel && "send" in channel) {
+                await (channel as { send: (content: string) => Promise<unknown> }).send(
+                  message.content,
+                );
+                this.logger.info(`Successfully sent pending message to Discord: ${file.path}`);
+              } else {
+                this.logger.error("Channel not found or doesn't have send method");
+              }
+            } else {
+              this.logger.warn(
+                `Invalid message or missing target channel. Message: ${!!message}, Content: ${!!message
+                  ?.content}, ChannelID: ${this.targetChannelId}`,
+              );
+            }
+
+            // Clean up the file after processing
+            await Deno.remove(file.path);
+            this.logger.info(`Cleaned up pending message file: ${file.path}`);
+          } catch (error) {
+            this.logger.error(`Error processing pending file ${file.path}: ${error}`);
+          }
         }
+      } catch (error) {
+        this.logger.debug(`Error in pending message monitor: ${error}`);
       }
     }, 1000); // Check every second
   }
@@ -1316,24 +1347,82 @@ LOG_LEVEL=info
     }
 
     try {
-      // Write message to pending file for active bot to pick up
-      const pendingMessage = {
-        content: message,
-        timestamp: new Date().toISOString(),
-        type: "claude-response",
-      };
+      // Split long messages to handle Discord's 2000 character limit
+      const messageChunks = this.splitMessageForDiscord(message);
 
-      const pendingFile = `/tmp/claude-discord-pending-${sessionName}.json`;
+      for (let i = 0; i < messageChunks.length; i++) {
+        const chunk = messageChunks[i];
+        const pendingMessage = {
+          content: chunk,
+          timestamp: new Date().toISOString(),
+          type: "claude-response",
+          isChunk: messageChunks.length > 1,
+          chunkIndex: i + 1,
+          totalChunks: messageChunks.length,
+        };
 
-      await Deno.writeTextFile(pendingFile, JSON.stringify(pendingMessage, null, 2));
-      console.log(
-        colors.green(
-          `✅ メッセージをDiscordに送信キューに追加しました (セッション: ${sessionName})`,
-        ),
-      );
+        const pendingFile = `/tmp/claude-discord-pending-${sessionName}-${i + 1}.json`;
+        await Deno.writeTextFile(pendingFile, JSON.stringify(pendingMessage, null, 2));
+      }
+
+      if (messageChunks.length > 1) {
+        console.log(
+          colors.green(
+            `✅ メッセージを${messageChunks.length}つのチャンクに分割してDiscordに送信キューに追加しました (セッション: ${sessionName})`,
+          ),
+        );
+      } else {
+        console.log(
+          colors.green(
+            `✅ メッセージをDiscordに送信キューに追加しました (セッション: ${sessionName})`,
+          ),
+        );
+      }
     } catch (error) {
       console.log(colors.red(`❌ メッセージの送信に失敗しました: ${error}`));
     }
+  }
+
+  /**
+   * Split long messages for Discord's character limit
+   */
+  private splitMessageForDiscord(message: string): string[] {
+    const maxLength = 1900; // Discord limit minus buffer
+
+    if (message.length <= maxLength) {
+      return [message];
+    }
+
+    const chunks: string[] = [];
+    const lines = message.split("\n");
+    let currentChunk = "";
+
+    for (const line of lines) {
+      // If adding this line would exceed the limit
+      if (currentChunk.length + line.length + 1 > maxLength) {
+        if (currentChunk.trim()) {
+          chunks.push(currentChunk.trim());
+        }
+        currentChunk = line;
+      } else {
+        currentChunk += (currentChunk ? "\n" : "") + line;
+      }
+    }
+
+    // Add the last chunk if it has content
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+    }
+
+    // Add chunk indicators for multiple chunks
+    if (chunks.length > 1) {
+      return chunks.map((chunk, index) => {
+        const indicator = `📄 **[${index + 1}/${chunks.length}]**\n\n`;
+        return indicator + chunk;
+      });
+    }
+
+    return chunks;
   }
 }
 
