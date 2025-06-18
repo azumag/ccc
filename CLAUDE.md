@@ -43,11 +43,30 @@ npm run build && /Users/azumag/.deno/bin/deno install --global --allow-all --con
 
 ## QA Process
 
-タスク終了後、かならず単体テストと静的解析を実行し、fixを行う
+タスク終了後、かならず以下のチェックを実行し、fixを行う
 
-### 重要な開発プラクティス
+### 必須実行項目
 
-- 今後はlint check と test 徹底
+1. **Formatting**: `npm run fmt` (deno fmt) でコードスタイル統一
+2. **Type Check**: `npm run check` (deno check) でTypeScript検証
+3. **Linting**: `npm run lint` (deno lint) でコード品質チェック
+4. **Testing**: `npm test` で単体テスト実行
+
+### 実行順序
+
+```bash
+# 標準的なQAフロー
+npm run fmt      # フォーマット修正
+npm run check    # 型チェック
+npm run lint     # 構文チェック  
+npm test         # テスト実行
+```
+
+### CI失敗防止
+
+- **Commit前**: 必ず上記4項目を実行
+- **Format違反**: CI失敗の主要原因のため特に注意
+- **一括実行**: `npm run fmt && npm run check && npm run lint && npm test`
 
 ## バージョン管理
 
