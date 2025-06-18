@@ -108,14 +108,33 @@ export class TmuxSessionManager {
       claudeCommand += " -c";
     }
 
-    const claudeResult = await this.executeTmuxCommand({
+    // Send Claude command first
+    const claudeCommandResult = await this.executeTmuxCommand({
       args: [
         "send-keys",
         "-t",
         this.sessionName,
         "--",
         claudeCommand,
-        "Enter",
+      ],
+    });
+
+    if (!claudeCommandResult.success) {
+      this.logger.error(`Failed to send Claude command: ${claudeCommandResult.stderr}`);
+      await this.killSession(); // Cleanup failed session
+      return false;
+    }
+
+    // Wait before sending Enter key
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Send Enter key separately using C-m for better reliability
+    const claudeResult = await this.executeTmuxCommand({
+      args: [
+        "send-keys",
+        "-t",
+        this.sessionName,
+        "C-m",
       ],
     });
 

@@ -83,13 +83,41 @@ class SimpleTmuxManager {
 
   async sendCommand(command: string): Promise<boolean> {
     try {
-      const cmd = new Deno.Command("tmux", {
-        args: ["send-keys", "-t", this.sessionName, command, "Enter"],
+      // Clean command (remove trailing newlines)
+      const cleanCommand = command.trim();
+      this.logger.debug(`Sending command to tmux: "${cleanCommand}"`);
+
+      // Send command text first with option terminator to handle commands starting with -
+      const commandCmd = new Deno.Command("tmux", {
+        args: ["send-keys", "-t", this.sessionName, "--", cleanCommand],
       });
 
-      const process = cmd.spawn();
-      const status = await process.status;
-      return status.success;
+      const commandProcess = commandCmd.spawn();
+      const commandStatus = await commandProcess.status;
+
+      if (!commandStatus.success) {
+        this.logger.error("Failed to send command text");
+        return false;
+      }
+
+      // Longer delay before sending Enter for reliability
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Send Enter key using C-m (carriage return) for better reliability
+      const enterCmd = new Deno.Command("tmux", {
+        args: ["send-keys", "-t", this.sessionName, "C-m"],
+      });
+
+      const enterProcess = enterCmd.spawn();
+      const enterStatus = await enterProcess.status;
+
+      if (!enterStatus.success) {
+        this.logger.error("Failed to send Enter key");
+        return false;
+      }
+
+      this.logger.debug("Successfully sent command and Enter to tmux");
+      return true;
     } catch (error) {
       this.logger.error(`Failed to send command: ${error}`);
       return false;
