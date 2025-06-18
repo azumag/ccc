@@ -392,14 +392,10 @@ class ClaudeDiscordBot {
       if (this.config.autoCommit || this.config.autoPush) {
         const actions = [];
         if (this.config.autoCommit) {
-          actions.push(
-            'git add . && git commit -m "task: Auto commit on task completion\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>"',
-          );
+          actions.push("commit");
         }
-        if (this.config.autoPush) actions.push("git push");
-        autoGitInstructions = `\n\n注意: タスク完了後、以下のコマンドを実行してください:\n${
-          actions.join(" && ")
-        }\n`;
+        if (this.config.autoPush) actions.push("push");
+        autoGitInstructions = `\n\n注意: タスク完了後、${actions.join(" と ")} をしてください。`;
       }
 
       // Add progress update instructions to prompt
