@@ -128,6 +128,47 @@ git push origin main
 
 GitHubのCDNキャッシュにより、`cli-standalone.ts`が古いバージョンで提供される問題を防ぐため
 
+## Dual CLI Architecture
+
+The project maintains two functionally identical CLI entry points:
+
+### `cli.ts` (Import Maps Version)
+
+- Uses Deno import maps from `deno.json`
+- Shorter import paths (`@std/cli`, `discord.js`)
+- Intended for local development and local installations
+- Requires `deno.json` in the working directory
+
+### `cli-standalone.ts` (Full URLs Version)
+
+- Uses full jsr:// and npm:// URLs for imports
+- Self-contained, works without import maps
+- Intended for direct GitHub installation
+- Works from any directory without configuration files
+
+### Critical Synchronization Requirements
+
+Both files must be kept functionally identical except for import statements:
+
+- **Identical VERSION constants**: Version mismatch breaks user experience
+- **Identical BotConfig interfaces**: Prevents runtime type errors
+- **Identical CLI argument parsing**: Ensures consistent behavior
+- **Identical prompt generation logic**: Prevents feature discrepancies
+- **Identical class structures**: Maintains API compatibility
+
+### Installation Patterns
+
+```bash
+# Local development (uses cli.ts with import maps)
+git clone repo && deno install --global ./cli.ts
+
+# Direct GitHub installation (uses cli-standalone.ts)
+deno install --global https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts
+
+# JSR installation (future, uses full URLs internally)
+deno install jsr:@azumag/claude-discord-bot/cli
+```
+
 ## Message Buffering System
 
 Discord messages are buffered to reduce API calls and provide better context:
@@ -137,6 +178,124 @@ Discord messages are buffered to reduce API calls and provide better context:
 - **Per-channel buffering**: Each Discord channel maintains its own buffer
 - Messages are combined with user attribution before sending to Claude
 - Special commands (`/restart`, `/status`) bypass buffering for immediate execution
+
+## Prompt Generation Architecture
+
+The CLI uses a sophisticated prompt generation system that transforms CLI arguments into Claude prompts:
+
+### CLI Argument Processing Flow
+
+1. **Flag Parsing** (`cli.ts` parseArgs): CLI arguments are parsed into boolean/string options
+2. **BotConfig Mapping**: Arguments are mapped to BotConfig interface properties
+3. **Prompt Enhancement** (`processMessage` method): BotConfig drives prompt generation
+
+### Key Prompt Components (Applied in Order)
+
+```typescript
+// 1. Project Mode Prefix
+const projectPrefix = config.orchestratorMode ? "/project:orchestrator\n\n" : "";
+
+// 2. Core User Message
+// (unchanged user input)
+
+// 3. Enhanced Thinking Mode
+const ultrathinkText = config.enableUltraThink ? "\n\nultrathink\n" : "";
+
+// 4. Auto-Git Instructions
+if (config.autoCommit || config.autoPush) {
+  // Adds post-task git commit/push commands
+}
+
+// 5. Progress Update Instructions
+if (config.progressUpdate) {
+  // Adds periodic progress reporting instructions with interval
+}
+
+// 6. Discord Response Command
+// Always appended: instructions to use send-to-discord command
+```
+
+### Critical Implementation Details
+
+- **Prompt order matters**: Each component is appended in specific sequence
+- **CLI synchronization**: Both `cli.ts` and `cli-standalone.ts` must implement identical logic
+- **Regression prevention**: Test file `tests/cli-prompt-generation.test.ts` prevents prompt generation bugs
+
+### New Feature Integration Pattern
+
+When adding new CLI options that affect prompts:
+
+1. Add to `BotConfig` interface in both CLI files
+2. Add to `parseArgs` string/boolean arrays
+3. Add to `startCommand` argument type
+4. Add to config object mapping
+5. Add prompt generation logic in `processMessage`
+6. Update test file with new test cases
+7. Sync both CLI files identically
+
+## Progress Update System
+
+Latest feature addition enabling real-time task progress reporting to Discord:
+
+### CLI Flags
+
+- `--progress-update`: Enables progress reporting during long-running tasks
+- `--progress-interval <time>`: Sets reporting interval (default: 1m, examples: 30s, 2m)
+
+### Implementation
+
+The system adds instructions to Claude's prompt to periodically report progress:
+
+```typescript
+progressInstructions = `
+重要: 長時間タスクの場合、${interval}間隔または重要な進捗があるたびに以下のコマンドで途中経過を報告してください:
+claude-discord-bot send-to-discord "進捗: [現在の作業内容と進行状況]" --session ${tmuxSessionName}
+
+進捗報告の例:
+- "進捗: ファイル解析完了、3/10ファイル処理済み"
+- "進捗: テスト実行中、2/5スイート完了"
+- "進捗: デプロイ中、ビルド完了・アップロード開始"
+`;
+```
+
+### Usage
+
+```bash
+# Enable progress updates with default 1-minute interval
+claude-discord-bot start --progress-update
+
+# Custom 30-second interval
+claude-discord-bot start --progress-update --progress-interval 30s
+
+# Combined with other options
+claude-discord-bot start --orch --progress-update --auto-commit
+```
+
+## Testing Strategy
+
+### Prompt Generation Testing
+
+Critical for preventing regressions in CLI argument to prompt transformation:
+
+- **Test file**: `tests/cli-prompt-generation.test.ts`
+- **Coverage**: All CLI flag combinations and prompt order verification
+- **Pattern**: Mock BotConfig → Generate prompt → Assert expected content and order
+
+### Test Categories
+
+1. **Individual flags**: Each option tested in isolation
+2. **Flag combinations**: Complex multi-option scenarios
+3. **Order verification**: Ensures prompt components appear in correct sequence
+4. **Edge cases**: Default values, empty configurations, special characters
+
+### Regression Prevention Process
+
+When modifying prompt generation:
+
+1. Run existing tests: `npm run test:prompt`
+2. Add new test cases for new functionality
+3. Verify both positive and negative test cases
+4. Ensure prompt order remains consistent
 
 ## Development Flow
 
