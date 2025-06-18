@@ -157,12 +157,12 @@ export class TmuxSessionManager {
       return false;
     }
 
-    // Small delay before sending Enter
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Longer delay before sending Enter for reliability
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
-    // Send Enter key explicitly
+    // Send Enter key using C-m (carriage return) for better reliability
     const enterResult = await this.executeTmuxCommand({
-      args: ["send-keys", "-t", this.sessionName, "Enter"],
+      args: ["send-keys", "-t", this.sessionName, "C-m"],
     });
 
     if (!enterResult.success) {

@@ -145,9 +145,9 @@ class SimpleTmuxManager {
       const cleanCommand = command.trim();
       this.logger.debug(`Sending command to tmux: "${cleanCommand}"`);
 
-      // Send command text first
+      // Send command text first with option terminator to handle commands starting with -
       const commandCmd = new Deno.Command("tmux", {
-        args: ["send-keys", "-t", this.sessionName, cleanCommand],
+        args: ["send-keys", "-t", this.sessionName, "--", cleanCommand],
       });
 
       const commandProcess = commandCmd.spawn();
@@ -158,12 +158,12 @@ class SimpleTmuxManager {
         return false;
       }
 
-      // Small delay before sending Enter
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Longer delay before sending Enter for reliability
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // Send Enter key explicitly
+      // Send Enter key using C-m (carriage return) for better reliability
       const enterCmd = new Deno.Command("tmux", {
-        args: ["send-keys", "-t", this.sessionName, "Enter"],
+        args: ["send-keys", "-t", this.sessionName, "C-m"],
       });
 
       const enterProcess = enterCmd.spawn();
