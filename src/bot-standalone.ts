@@ -196,16 +196,31 @@ export class ClaudeDiscordBot {
   }
 
   private async handleMessage(message: Message): Promise<void> {
-    // Skip bot messages
-    if (message.author.bot) return;
-
-    // Check if message is in target channel
+    // Check if message is in target channel first
     if (message.channelId !== this.targetChannelId) return;
 
-    // Check authorization if configured
-    if (this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId) {
-      this.logger.debug(`Unauthorized user: ${message.author.tag}`);
-      return;
+    // Check for webhook messages first (before bot filtering)
+    if (message.webhookId) {
+      // Webhook detected - bypass authorization and bot filtering
+      if (this.config.authorizedUserId) {
+        this.logger.info(
+          `Webhook message detected - bypassing authorization for ${message.author.tag}`,
+        );
+      }
+    } else {
+      // Regular bot filtering (only for non-webhook messages)
+      if (message.author.bot) {
+        this.logger.debug("Skipping bot message (non-webhook)");
+        return;
+      }
+
+      // Check authorization for regular user messages
+      if (
+        this.config.authorizedUserId && message.author.id !== this.config.authorizedUserId
+      ) {
+        this.logger.debug(`Unauthorized user: ${message.author.tag}`);
+        return;
+      }
     }
 
     // Handle special commands
