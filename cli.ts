@@ -1337,8 +1337,21 @@ LOG_LEVEL=info
     console.log("更新機能は実装中です");
   }
 
+  /**
+   * Process message for better readability while keeping security-sensitive escaping
+   */
+  private processMessageForReadability(message: string): string {
+    return message
+      // Convert common escape sequences to actual characters for readability
+      .replace(/\\n/g, "\n") // \n to actual newline
+      .replace(/\\t/g, "\t") // \t to actual tab
+      .replace(/\\r/g, "\r"); // \r to carriage return
+    // Keep security-sensitive characters escaped (these should remain escaped)
+    // Dollar signs, backticks, double quotes etc. are left as-is for security
+  }
+
   private async sendToDiscordCommand(args: { _: unknown[]; session?: string }): Promise<void> {
-    const message = (args as { _: unknown[] })._[1] as string;
+    let message = (args as { _: unknown[] })._[1] as string;
     const sessionName = args.session || Deno.env.get("TMUX_SESSION_NAME") || "claude-main";
 
     if (!message) {
@@ -1350,6 +1363,9 @@ LOG_LEVEL=info
     }
 
     try {
+      // Process message for better readability
+      message = this.processMessageForReadability(message);
+
       // Split long messages to handle Discord's 2000 character limit
       const messageChunks = this.splitMessageForDiscord(message);
 

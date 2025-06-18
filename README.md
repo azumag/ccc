@@ -704,7 +704,7 @@ claude-discord-bot --version
 | `--session <name>`           | `-s` | tmuxセッション名         | `claude-main`      |
 | `--log-level <level>`        |      | ログレベル               | `info`             |
 | `--ultrathink`               |      | 拡張思考モード有効化     | `false`            |
-| `--dangerous-permit`       |      | Claude権限バイパス有効化 | `false`            |
+| `--dangerous-permit`         |      | Claude権限バイパス有効化 | `false`            |
 | `--progress-update`          |      | 進捗レポート機能有効化   | `false`            |
 | `--progress-interval <time>` |      | 進捗レポート間隔         | `1m`               |
 | `--help`                     | `-h` | ヘルプ表示               |                    |
