@@ -45,6 +45,9 @@ npm run build && /Users/azumag/.deno/bin/deno install --global --allow-all --con
 
 タスク終了後、かならず単体テストと静的解析を実行し、fixを行う
 
+### 重要な開発プラクティス
+- 今後はlint check と test 徹底
+
 ## バージョン管理
 
 CLIツールの修正・機能追加時は必ずバージョンを更新する：

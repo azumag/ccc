@@ -43,8 +43,8 @@ Deno.test("ClaudeCodeExecutor - formatResponseForDiscord", () => {
   const formatted = executor.formatResponseForDiscord(successResponse);
   assertEquals(Array.isArray(formatted), true);
   assertEquals(formatted.length, 1);
-  assertEquals(formatted[0].includes("```"), true);
-  assertEquals(formatted[0].includes("Hello, World!"), true);
+  assertEquals(formatted[0]?.includes("```"), true);
+  assertEquals(formatted[0]?.includes("Hello, World!"), true);
 });
 
 Deno.test("ClaudeCodeExecutor - formatResponseForDiscord error", () => {
@@ -62,8 +62,8 @@ Deno.test("ClaudeCodeExecutor - formatResponseForDiscord error", () => {
   const formatted = executor.formatResponseForDiscord(errorResponse);
   assertEquals(Array.isArray(formatted), true);
   assertEquals(formatted.length, 1);
-  assertEquals(formatted[0].includes("❌"), true);
-  assertEquals(formatted[0].includes("Test error message"), true);
+  assertEquals(formatted[0]?.includes("❌"), true);
+  assertEquals(formatted[0]?.includes("Test error message"), true);
 });
 
 Deno.test("ClaudeCodeExecutor - formatResponseForDiscord long content", () => {
@@ -163,7 +163,7 @@ Deno.test("ClaudeCodeExecutor - language detection", () => {
     success: true,
   };
   const tsFormatted = executor.formatResponseForDiscord(tsResponse);
-  assertEquals(tsFormatted[0].includes("```jsx"), true);
+  assertEquals(tsFormatted[0]?.includes("```jsx"), true);
 
   // Test JavaScript detection
   const jsResponse = {
@@ -171,7 +171,7 @@ Deno.test("ClaudeCodeExecutor - language detection", () => {
     success: true,
   };
   const jsFormatted = executor.formatResponseForDiscord(jsResponse);
-  assertEquals(jsFormatted[0].includes("```javascript"), true);
+  assertEquals(jsFormatted[0]?.includes("```javascript"), true);
 
   // Test Python detection
   const pyResponse = {
@@ -179,5 +179,5 @@ Deno.test("ClaudeCodeExecutor - language detection", () => {
     success: true,
   };
   const pyFormatted = executor.formatResponseForDiscord(pyResponse);
-  assertEquals(pyFormatted[0].includes("```python"), true);
+  assertEquals(pyFormatted[0]?.includes("```python"), true);
 });

@@ -13,7 +13,7 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.23.0";
+const VERSION = "1.24.0";
 
 interface CLIConfig {
   projectPath: string;
@@ -41,6 +41,8 @@ interface BotConfig {
   enableContinue?: boolean;
   autoCommit?: boolean;
   autoPush?: boolean;
+  progressUpdate?: boolean;
+  progressInterval?: string;
 }
 
 interface BotStats {
@@ -395,7 +397,21 @@ class ClaudeDiscordBot {
         }\n`;
       }
 
-      const enhancedPrompt = `${projectPrefix}${prompt}${ultrathinkText}${autoGitInstructions}
+      // Add progress update instructions to prompt
+      let progressInstructions = "";
+      if (this.config.progressUpdate) {
+        const interval = this.config.progressInterval || "1m";
+        progressInstructions = `\n\n重要: 長時間タスクの場合、${interval}間隔または重要な進捗があるたびに以下のコマンドで途中経過を報告してください:
+claude-discord-bot send-to-discord "進捗: [現在の作業内容と進行状況]" --session ${this.config.tmuxSessionName}
+
+進捗報告の例:
+- "進捗: ファイル解析完了、3/10ファイル処理済み"
+- "進捗: テスト実行中、2/5スイート完了"
+- "進捗: デプロイ中、ビルド完了・アップロード開始"
+`;
+      }
+
+      const enhancedPrompt = `${projectPrefix}${prompt}${ultrathinkText}${autoGitInstructions}${progressInstructions}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
@@ -763,7 +779,7 @@ export class ClaudeDiscordBotCLI {
 
   async run(args: string[]): Promise<void> {
     const parsed = parseArgs(args, {
-      string: ["channel", "project", "log-level", "session"],
+      string: ["channel", "project", "log-level", "session", "progress-interval"],
       boolean: [
         "help",
         "version",
@@ -776,6 +792,7 @@ export class ClaudeDiscordBotCLI {
         "orch",
         "auto-commit",
         "auto-push",
+        "progress-update",
       ],
       alias: {
         h: "help",
@@ -851,6 +868,8 @@ ${colors.yellow("OPTIONS:")}
   -o, --orch               Enable orchestrator mode (/project:orchestrator)
   --auto-commit            Auto commit when task completes
   --auto-push              Auto push when task completes
+  --progress-update        Send progress updates to Discord during execution
+  --progress-interval <int> Progress update interval (default: 1m, e.g. 30s, 2m)
   -h, --help              Show this help
   -v, --version           Show version
 
@@ -864,6 +883,7 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot start --continue               # Start with continue mode
   claude-discord-bot start --orch                   # Start with orchestrator mode
   claude-discord-bot start --auto-commit --auto-push # Start with auto git operations
+  claude-discord-bot start --progress-update        # Start with progress reporting
   claude-discord-bot start --global                 # Start from global directory
   claude-discord-bot status                         # Check bot status
   claude-discord-bot send-to-discord "Hello world"   # Send message to Discord
@@ -1153,6 +1173,8 @@ LOG_LEVEL=info
       orch?: boolean;
       "auto-commit"?: boolean;
       "auto-push"?: boolean;
+      "progress-update"?: boolean;
+      "progress-interval"?: string;
     },
   ): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
@@ -1224,6 +1246,8 @@ LOG_LEVEL=info
       enableContinue: args.continue || false,
       autoCommit: args["auto-commit"] || false,
       autoPush: args["auto-push"] || false,
+      progressUpdate: args["progress-update"] || false,
+      progressInterval: args["progress-interval"] || "1m",
     };
 
     console.log(colors.green("🤖 Bot を起動しています..."));

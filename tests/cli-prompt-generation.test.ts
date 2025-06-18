@@ -20,6 +20,8 @@ interface BotConfig {
   enableContinue?: boolean;
   autoCommit?: boolean;
   autoPush?: boolean;
+  progressUpdate?: boolean;
+  progressInterval?: string;
 }
 
 /**
@@ -48,7 +50,21 @@ function generateEnhancedPrompt(
     }\n`;
   }
 
-  return `${projectPrefix}${prompt}${ultrathinkText}${autoGitInstructions}
+  // Add progress update instructions to prompt
+  let progressInstructions = "";
+  if (config.progressUpdate) {
+    const interval = config.progressInterval || "1m";
+    progressInstructions = `\n\n重要: 長時間タスクの場合、${interval}間隔または重要な進捗があるたびに以下のコマンドで途中経過を報告してください:
+claude-discord-bot send-to-discord "進捗: [現在の作業内容と進行状況]" --session ${config.tmuxSessionName}
+
+進捗報告の例:
+- "進捗: ファイル解析完了、3/10ファイル処理済み"
+- "進捗: テスト実行中、2/5スイート完了"
+- "進捗: デプロイ中、ビルド完了・アップロード開始"
+`;
+  }
+
+  return `${projectPrefix}${prompt}${ultrathinkText}${autoGitInstructions}${progressInstructions}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${config.tmuxSessionName}`;
@@ -225,4 +241,101 @@ Deno.test("Enhanced Prompt Generation - session name escaping", () => {
   const result = generateEnhancedPrompt(prompt, config);
 
   assertStringIncludes(result, "--session special-session-name_123");
+});
+
+Deno.test("Enhanced Prompt Generation - progress-update flag", () => {
+  const config: BotConfig = {
+    discordToken: "test-token",
+    guildId: "test-guild",
+    channelName: "test-channel",
+    tmuxSessionName: "test-session",
+    logLevel: "info",
+    progressUpdate: true,
+  };
+
+  const prompt = "Test message";
+  const result = generateEnhancedPrompt(prompt, config);
+
+  assertStringIncludes(result, "重要: 長時間タスクの場合、1m間隔または重要な進捗があるたびに");
+  assertStringIncludes(result, "進捗: [現在の作業内容と進行状況]");
+  assertStringIncludes(result, "進捗報告の例:");
+  assertStringIncludes(result, "- \"進捗: ファイル解析完了、3/10ファイル処理済み\"");
+});
+
+Deno.test("Enhanced Prompt Generation - progress-update with custom interval", () => {
+  const config: BotConfig = {
+    discordToken: "test-token",
+    guildId: "test-guild",
+    channelName: "test-channel",
+    tmuxSessionName: "test-session",
+    logLevel: "info",
+    progressUpdate: true,
+    progressInterval: "30s",
+  };
+
+  const prompt = "Test message";
+  const result = generateEnhancedPrompt(prompt, config);
+
+  assertStringIncludes(result, "重要: 長時間タスクの場合、30s間隔または重要な進捗があるたびに");
+  assertStringIncludes(result, "--session test-session");
+});
+
+Deno.test("Enhanced Prompt Generation - all flags including progress", () => {
+  const config: BotConfig = {
+    discordToken: "test-token",
+    guildId: "test-guild",
+    channelName: "test-channel",
+    tmuxSessionName: "test-session",
+    logLevel: "info",
+    enableUltraThink: true,
+    orchestratorMode: true,
+    autoCommit: true,
+    autoPush: true,
+    progressUpdate: true,
+    progressInterval: "2m",
+  };
+
+  const prompt = "Complete test message";
+  const result = generateEnhancedPrompt(prompt, config);
+
+  // Check all components are present
+  assertStringIncludes(result, "/project:orchestrator\n\n");
+  assertStringIncludes(result, "Complete test message");
+  assertStringIncludes(result, "\n\nultrathink\n");
+  assertStringIncludes(result, "注意: タスク完了後、以下のコマンドを実行してください:");
+  assertStringIncludes(result, "git add . && git commit");
+  assertStringIncludes(result, "git push");
+  assertStringIncludes(result, "重要: 長時間タスクの場合、2m間隔または重要な進捗があるたびに");
+  assertStringIncludes(result, "進捗報告の例:");
+});
+
+Deno.test("Enhanced Prompt Generation - progress order verification", () => {
+  const config: BotConfig = {
+    discordToken: "test-token",
+    guildId: "test-guild",
+    channelName: "test-channel",
+    tmuxSessionName: "test-session",
+    logLevel: "info",
+    enableUltraThink: true,
+    orchestratorMode: true,
+    autoCommit: true,
+    progressUpdate: true,
+  };
+
+  const prompt = "Order test with progress";
+  const result = generateEnhancedPrompt(prompt, config);
+
+  // Verify the order: orchestrator prefix, prompt, ultrathink, git instructions, progress instructions, command
+  const orchestratorIndex = result.indexOf("/project:orchestrator");
+  const promptIndex = result.indexOf("Order test with progress");
+  const ultrathinkIndex = result.indexOf("ultrathink");
+  const gitInstructionsIndex = result.indexOf("注意: タスク完了後");
+  const progressInstructionsIndex = result.indexOf("重要: 長時間タスクの場合");
+  const commandIndex = result.indexOf("claude-discord-bot send-to-discord");
+
+  assertEquals(orchestratorIndex < promptIndex, true, "Orchestrator prefix should come before prompt");
+  assertEquals(promptIndex < ultrathinkIndex, true, "Prompt should come before ultrathink");
+  assertEquals(ultrathinkIndex < gitInstructionsIndex, true, "Ultrathink should come before git instructions");
+  assertEquals(gitInstructionsIndex < progressInstructionsIndex, true, "Git instructions should come before progress instructions");
+  assertEquals(progressInstructionsIndex < commandIndex, true, "Progress instructions should come before command");
 });
