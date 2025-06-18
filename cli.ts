@@ -401,13 +401,20 @@ class ClaudeDiscordBot {
       if (this.config.progressUpdate) {
         const interval = this.config.progressInterval || "1m";
         progressInstructions =
-          `\n\n重要: 長時間タスクの場合、${interval}間隔または重要な進捗があるたびに以下のコマンドで途中経過を報告してください:
-claude-discord-bot send-to-discord "進捗: [現在の作業内容と進行状況]" --session ${this.config.tmuxSessionName}
+          `\n\n重要: 長時間タスクの場合、${interval}間隔または重要な進捗があるたびに以下のコマンドで詳細な作業状況を報告してください:
+claude-discord-bot send-to-discord "[現在の作業内容を詳しく説明]" --session ${this.config.tmuxSessionName}
 
-進捗報告の例:
-- "進捗: ファイル解析完了、3/10ファイル処理済み"
-- "進捗: テスト実行中、2/5スイート完了"
-- "進捗: デプロイ中、ビルド完了・アップロード開始"
+報告時は、以下の要素を含めてください：
+- 現在実行中の具体的なタスク
+- 完了した作業の詳細と結果
+- 残りの作業量や推定時間
+- 発見した問題や重要な判断事項
+- 次のステップの予定
+
+報告例:
+- "ファイル解析を完了しました。src/配下の15ファイルを処理し、3つのTypeScriptエラーと2つの依存関係の問題を発見。現在、エラー修正に着手中で、残り作業時間は約10分の見込みです。"
+- "テスト実行中です。unit testsは全て通過（27/27）、integration testsで1件のタイムアウトエラーが発生。原因を調査中で、ネットワーク設定の問題と推測。並行してdocumentationの更新も進めています。"
+- "デプロイ作業を開始しました。ビルドが正常に完了し、現在Docker imageを作成中。その後、staging環境での検証とproduction環境への展開を予定。全体で約20分程度を見込んでいます。"
 `;
       }
 
