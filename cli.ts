@@ -786,7 +786,7 @@ export class ClaudeDiscordBotCLI {
         "version",
         "verbose",
         "ultrathink",
-        "dangerously-permit",
+        "dangerous-permit",
         "resume",
         "continue",
         "orch",
@@ -1167,7 +1167,7 @@ LOG_LEVEL=info
       global?: boolean;
       project?: string;
       ultrathink?: boolean;
-      "dangerously-permit"?: boolean;
+      "dangerous-permit"?: boolean;
       resume?: boolean;
       continue?: boolean;
       orch?: boolean;
@@ -1241,7 +1241,7 @@ LOG_LEVEL=info
       logLevel: Deno.env.get("LOG_LEVEL") || "info",
       enableUltraThink: args.ultrathink || false,
       orchestratorMode: args.orch || false,
-      useDangerouslySkipPermissions: args["dangerously-permit"] || false,
+      useDangerouslySkipPermissions: args["dangerous-permit"] || false,
       enableResume: args.resume || false,
       enableContinue: args.continue || false,
       autoCommit: args["auto-commit"] || false,

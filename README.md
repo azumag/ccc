@@ -263,6 +263,61 @@ claude-discord-bot start --ultrathink
 [最適化されたコード]
 ```
 
+### 🔄 進捗レポート機能
+
+長時間実行されるタスクの進捗を定期的にDiscordに報告する機能です。
+
+#### 基本的な使い方
+
+```bash
+# 進捗レポートを有効化（デフォルト1分間隔）
+claude-discord-bot start --progress-update
+
+# カスタム間隔で進捗レポート
+claude-discord-bot start --progress-update --progress-interval 30s
+claude-discord-bot start --progress-update --progress-interval 2m
+claude-discord-bot start --progress-update --progress-interval 5m
+```
+
+#### 時間指定フォーマット
+
+| フォーマット | 説明     | 例          |
+| ------------ | -------- | ----------- |
+| `30s`        | 秒単位   | 30秒間隔    |
+| `2m`         | 分単位   | 2分間隔     |
+| `1h`         | 時間単位 | 1時間間隔   |
+| `90s`        | 90秒間隔 | 1分30秒間隔 |
+
+#### 進捗レポートの例
+
+```
+# 長時間タスクの実行例
+👤 ユーザー: 全ファイルの型チェックとテストを実行して
+
+🤖 Bot: 🤔 考えています...
+
+# 1分後の進捗レポート
+🤖 Bot: 📊 進捗: 型チェック完了、テストファイル発見 - 15/30ファイル処理済み
+
+# 2分後の進捗レポート  
+🤖 Bot: 📊 進捗: テスト実行中 - 8/12テストスイート完了、2件のエラーを修正
+
+# 最終結果
+🤖 Bot: ✅ 完了 (3.2m)
+全ての型チェックとテストが完了しました：
+- 型エラー: 0件
+- テスト結果: 45/45 passed
+- 修正したエラー: 3件
+```
+
+#### 有効な場面
+
+- **大規模リファクタリング**: 複数ファイルの変更進捗
+- **テスト実行**: 長時間のテストスイート実行
+- **ビルド・デプロイ**: 時間のかかるビルドプロセス
+- **データ移行**: 大量データの処理進捗
+- **複雑な解析**: コードベース全体の分析
+
 ### 実際の使用例
 
 #### 1. React開発
@@ -614,8 +669,14 @@ claude-discord-bot start --ultrathink
 # 権限バイパスで起動
 claude-discord-bot start --dangerously-permit
 
-# 両方のオプションを組み合わせ
-claude-discord-bot start --ultrathink --dangerously-permit
+# 進捗レポート機能を有効化
+claude-discord-bot start --progress-update
+
+# 進捗レポート間隔をカスタマイズ
+claude-discord-bot start --progress-update --progress-interval 30s
+
+# オプションを組み合わせ
+claude-discord-bot start --ultrathink --dangerously-permit --progress-update
 
 # ステータス確認
 claude-discord-bot status
@@ -635,17 +696,19 @@ claude-discord-bot --version
 
 ### オプション
 
-| オプション             | 短縮 | 説明                     | デフォルト         |
-| ---------------------- | ---- | ------------------------ | ------------------ |
-| `--channel <name>`     | `-c` | Discord チャネル名       | `claude`           |
-| `--project <path>`     | `-p` | プロジェクトパス         | 現在のディレクトリ |
-| `--global`             |      | グローバル設定を使用     | `false`            |
-| `--session <name>`     | `-s` | tmuxセッション名         | `claude-main`      |
-| `--log-level <level>`  |      | ログレベル               | `info`             |
-| `--ultrathink`         |      | 拡張思考モード有効化     | `false`            |
-| `--dangerously-permit` |      | Claude権限バイパス有効化 | `false`            |
-| `--help`               | `-h` | ヘルプ表示               |                    |
-| `--version`            | `-v` | バージョン表示           |                    |
+| オプション                   | 短縮 | 説明                     | デフォルト         |
+| ---------------------------- | ---- | ------------------------ | ------------------ |
+| `--channel <name>`           | `-c` | Discord チャネル名       | `claude`           |
+| `--project <path>`           | `-p` | プロジェクトパス         | 現在のディレクトリ |
+| `--global`                   |      | グローバル設定を使用     | `false`            |
+| `--session <name>`           | `-s` | tmuxセッション名         | `claude-main`      |
+| `--log-level <level>`        |      | ログレベル               | `info`             |
+| `--ultrathink`               |      | 拡張思考モード有効化     | `false`            |
+| `--dangerously-permit`       |      | Claude権限バイパス有効化 | `false`            |
+| `--progress-update`          |      | 進捗レポート機能有効化   | `false`            |
+| `--progress-interval <time>` |      | 進捗レポート間隔         | `1m`               |
+| `--help`                     | `-h` | ヘルプ表示               |                    |
+| `--version`                  | `-v` | バージョン表示           |                    |
 
 ### 一回限り実行
 
