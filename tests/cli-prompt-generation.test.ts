@@ -54,7 +54,8 @@ function generateEnhancedPrompt(
   let progressInstructions = "";
   if (config.progressUpdate) {
     const interval = config.progressInterval || "1m";
-    progressInstructions = `\n\n重要: 長時間タスクの場合、${interval}間隔または重要な進捗があるたびに以下のコマンドで途中経過を報告してください:
+    progressInstructions =
+      `\n\n重要: 長時間タスクの場合、${interval}間隔または重要な進捗があるたびに以下のコマンドで途中経過を報告してください:
 claude-discord-bot send-to-discord "進捗: [現在の作業内容と進行状況]" --session ${config.tmuxSessionName}
 
 進捗報告の例:
@@ -259,7 +260,7 @@ Deno.test("Enhanced Prompt Generation - progress-update flag", () => {
   assertStringIncludes(result, "重要: 長時間タスクの場合、1m間隔または重要な進捗があるたびに");
   assertStringIncludes(result, "進捗: [現在の作業内容と進行状況]");
   assertStringIncludes(result, "進捗報告の例:");
-  assertStringIncludes(result, "- \"進捗: ファイル解析完了、3/10ファイル処理済み\"");
+  assertStringIncludes(result, '- "進捗: ファイル解析完了、3/10ファイル処理済み"');
 });
 
 Deno.test("Enhanced Prompt Generation - progress-update with custom interval", () => {
@@ -333,9 +334,25 @@ Deno.test("Enhanced Prompt Generation - progress order verification", () => {
   const progressInstructionsIndex = result.indexOf("重要: 長時間タスクの場合");
   const commandIndex = result.indexOf("claude-discord-bot send-to-discord");
 
-  assertEquals(orchestratorIndex < promptIndex, true, "Orchestrator prefix should come before prompt");
+  assertEquals(
+    orchestratorIndex < promptIndex,
+    true,
+    "Orchestrator prefix should come before prompt",
+  );
   assertEquals(promptIndex < ultrathinkIndex, true, "Prompt should come before ultrathink");
-  assertEquals(ultrathinkIndex < gitInstructionsIndex, true, "Ultrathink should come before git instructions");
-  assertEquals(gitInstructionsIndex < progressInstructionsIndex, true, "Git instructions should come before progress instructions");
-  assertEquals(progressInstructionsIndex < commandIndex, true, "Progress instructions should come before command");
+  assertEquals(
+    ultrathinkIndex < gitInstructionsIndex,
+    true,
+    "Ultrathink should come before git instructions",
+  );
+  assertEquals(
+    gitInstructionsIndex < progressInstructionsIndex,
+    true,
+    "Git instructions should come before progress instructions",
+  );
+  assertEquals(
+    progressInstructionsIndex < commandIndex,
+    true,
+    "Progress instructions should come before command",
+  );
 });

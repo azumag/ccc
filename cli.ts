@@ -400,7 +400,8 @@ class ClaudeDiscordBot {
       let progressInstructions = "";
       if (this.config.progressUpdate) {
         const interval = this.config.progressInterval || "1m";
-        progressInstructions = `\n\n重要: 長時間タスクの場合、${interval}間隔または重要な進捗があるたびに以下のコマンドで途中経過を報告してください:
+        progressInstructions =
+          `\n\n重要: 長時間タスクの場合、${interval}間隔または重要な進捗があるたびに以下のコマンドで途中経過を報告してください:
 claude-discord-bot send-to-discord "進捗: [現在の作業内容と進行状況]" --session ${this.config.tmuxSessionName}
 
 進捗報告の例:
@@ -410,7 +411,8 @@ claude-discord-bot send-to-discord "進捗: [現在の作業内容と進行状�
 `;
       }
 
-      const enhancedPrompt = `${projectPrefix}${prompt}${ultrathinkText}${autoGitInstructions}${progressInstructions}
+      const enhancedPrompt =
+        `${projectPrefix}${prompt}${ultrathinkText}${autoGitInstructions}${progressInstructions}
 
 重要: 実行結果や応答を以下のコマンドでDiscordに送信してください:
 claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.config.tmuxSessionName}`;
