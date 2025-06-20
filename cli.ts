@@ -12,45 +12,9 @@ import { dirname as _dirname, join } from "@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-const VERSION = "1.25.0";
+import type { CLIConfig, BotConfig, BotStats } from "./src/types.ts";
+import { VERSION, getHomeDirectory, formatUptime, chunkString } from "./src/utils.ts";
 
-interface CLIConfig {
-  projectPath: string;
-  channelName: string;
-  discordToken?: string;
-  guildId?: string;
-  authorizedUserId?: string;
-  tmuxSessionName: string;
-  logLevel: string;
-  orchestratorMode?: boolean;
-}
-
-// Bot interfaces
-interface BotConfig {
-  discordToken: string;
-  guildId: string;
-  authorizedUserId?: string;
-  channelName: string;
-  tmuxSessionName: string;
-  logLevel: string;
-  enableUltraThink?: boolean;
-  orchestratorMode?: boolean;
-  useDangerouslySkipPermissions?: boolean;
-  enableResume?: boolean;
-  enableContinue?: boolean;
-  autoCommit?: boolean;
-  autoPush?: boolean;
-  progressUpdate?: boolean;
-  progressInterval?: string;
-}
-
-interface BotStats {
-  startTime: Date;
-  messagesProcessed: number;
-  commandsExecuted: number;
-  lastActivity: Date;
-  sessionStatus: { exists: boolean; uptime: string };
-}
 
 // Bot classes
 class SimpleLogger {

@@ -1,114 +1,64 @@
 /**
- * Type definitions for the Claude Discord Bot
+ * Shared interfaces and types for Claude Discord Bot CLI
  */
 
-export interface ProjectContext {
-  /** Project root directory path */
-  rootPath: string;
-  /** Project name (from package.json or directory name) */
-  projectName: string;
-  /** Detected programming language */
-  language: string;
-  /** Detected framework (if any) */
-  framework?: string;
-  /** Git repository URL (if available) */
-  gitRepo?: string;
-  /** Package manager type */
-  packageManager?: "npm" | "yarn" | "pnpm" | "deno" | "cargo" | "pip";
-}
-
-export interface TmuxSessionStatus {
-  /** Whether the tmux session exists */
-  exists: boolean;
-  /** Time since last activity */
-  uptime: string;
-  /** Number of panes in session */
-  paneCount?: number;
-}
-
-export interface ClaudeResponse {
-  /** Response content from Claude */
-  content: string;
-  /** Whether the response was successful */
-  success: boolean;
-  /** Error message if failed */
-  error?: string;
-  /** Execution time in milliseconds */
-  executionTime?: number;
+export interface CLIConfig {
+  projectPath: string;
+  channelName: string;
+  discordToken?: string;
+  guildId?: string;
+  authorizedUserId?: string;
+  tmuxSessionName: string;
+  logLevel: string;
+  orchestratorMode?: boolean;
 }
 
 export interface BotConfig {
-  /** Discord bot token */
   discordToken: string;
-  /** Discord guild (server) ID */
   guildId: string;
-  /** Authorized user ID */
-  authorizedUserId: string;
-  /** Target channel name to monitor */
+  authorizedUserId?: string;
   channelName: string;
-  /** Project context */
-  projectContext: ProjectContext;
-  /** Tmux session name */
   tmuxSessionName: string;
-  /** Log level */
-  logLevel: "debug" | "info" | "warn" | "error";
-  /** Whether to enable ultrathink mode */
+  logLevel: string;
   enableUltraThink?: boolean;
-  /** Whether to use dangerously-skip-permissions for Claude */
+  orchestratorMode?: boolean;
   useDangerouslySkipPermissions?: boolean;
-  /** Whether to enable resume mode (-r flag for Claude) */
   enableResume?: boolean;
-  /** Whether to enable continue mode (-c flag for Claude) */
   enableContinue?: boolean;
-}
-
-export interface CommandResult {
-  /** Exit code */
-  code: number;
-  /** Standard output */
-  stdout: string;
-  /** Standard error */
-  stderr: string;
-  /** Success flag */
-  success: boolean;
-}
-
-export interface SpecialCommand {
-  /** Command name */
-  name: string;
-  /** Command description */
-  description: string;
-  /** Handler function */
-  handler: (message: unknown) => Promise<void>;
-}
-
-export interface TmuxCommand {
-  /** Tmux command arguments */
-  args: string[];
-  /** Working directory */
-  cwd?: string;
-  /** Timeout in milliseconds */
-  timeout?: number;
+  autoCommit?: boolean;
+  autoPush?: boolean;
+  progressUpdate?: boolean;
+  progressInterval?: string;
 }
 
 export interface BotStats {
-  /** Bot start time */
   startTime: Date;
-  /** Total messages processed */
   messagesProcessed: number;
-  /** Total commands executed */
   commandsExecuted: number;
-  /** Last activity time */
   lastActivity: Date;
-  /** Current session status */
-  sessionStatus: TmuxSessionStatus;
+  sessionStatus: { exists: boolean; uptime: string };
 }
 
-export type LogLevel = "debug" | "info" | "warn" | "error";
-
-export interface Logger {
-  debug(message: string, ...args: unknown[]): void;
-  info(message: string, ...args: unknown[]): void;
-  warn(message: string, ...args: unknown[]): void;
-  error(message: string, ...args: unknown[]): void;
+export interface ImportConfig {
+  parseArgs: string;
+  dotenv: string;
+  fs: string;
+  path: string;
 }
+
+export const IMPORT_CONFIGS = {
+  "import-maps": {
+    parseArgs: "@std/cli/parse-args",
+    dotenv: "@std/dotenv",
+    fs: "@std/fs",
+    path: "@std/path",
+  },
+  "full-urls": {
+    parseArgs: "jsr:@std/cli/parse-args",
+    dotenv: "jsr:@std/dotenv", 
+    fs: "jsr:@std/fs",
+    path: "jsr:@std/path",
+  }
+} as const;
+
+export type ImportType = keyof typeof IMPORT_CONFIGS;
