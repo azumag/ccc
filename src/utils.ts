@@ -42,34 +42,36 @@ export function chunkString(str: string, maxLength: number): string[] {
 }
 
 export function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) return "0 B";
 
   const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
 
 export function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (days > 0) {
-    return `${days}日${hours % 24}時間${minutes % 60}分`;
-  } else if (hours > 0) {
-    return `${hours}時間${minutes % 60}分`;
-  } else if (minutes > 0) {
-    return `${minutes}分${seconds % 60}秒`;
-  } else {
-    return `${seconds}秒`;
+  if (ms < 1000) {
+    return `${ms}ms`;
   }
+
+  const seconds = ms / 1000;
+  if (seconds < 60) {
+    return `${seconds.toFixed(1)}s`;
+  }
+
+  const minutes = seconds / 60;
+  if (minutes < 60) {
+    return `${minutes.toFixed(1)}m`;
+  }
+
+  const hours = minutes / 60;
+  return `${hours.toFixed(1)}h`;
 }
 
 export function parseArgs(args: string[]) {
-  return denoParseArgs(args, {
+  const parsed = denoParseArgs(args, {
     boolean: [
       "help",
       "version",
@@ -97,7 +99,22 @@ export function parseArgs(args: string[]) {
       s: "session",
       l: "log-level",
     },
+    default: {
+      // Explicitly set defaults to undefined for boolean flags
+      help: undefined,
+      version: undefined,
+      global: undefined,
+      orch: undefined,
+      ultrathink: undefined,
+      "dangerous-permit": undefined,
+      resume: undefined,
+      continue: undefined,
+      "auto-commit": undefined,
+      "auto-push": undefined,
+      "progress-update": undefined,
+    },
   });
+  return parsed;
 }
 
 export function showHelp(): void {
@@ -142,6 +159,7 @@ export function validateEnvironment(): { valid: boolean; missing: string[] } {
   const required = [
     "DISCORD_BOT_TOKEN",
     "GUILD_ID",
+    "AUTHORIZED_USER_ID",
   ];
 
   const missing = required.filter((key) => !Deno.env.get(key));
@@ -164,7 +182,7 @@ export async function detectProjectContext(rootPath: string): Promise<ProjectCon
     try {
       const packageJson = JSON.parse(await Deno.readTextFile(packageJsonPath));
       context.projectName = packageJson.name || context.projectName;
-      context.language = "javascript";
+      context.language = "typescript";
 
       // Detect framework
       if (packageJson.dependencies || packageJson.devDependencies) {
@@ -187,6 +205,9 @@ export async function detectProjectContext(rootPath: string): Promise<ProjectCon
         context.packageManager = "pnpm";
       } else if (await exists(join(rootPath, "bun.lockb"))) {
         context.packageManager = "bun";
+      } else {
+        // Default to npm for package.json projects without specific lock files
+        context.packageManager = "npm";
       }
     } catch (error) {
       console.warn(`Warning: Could not parse package.json: ${error}`);
@@ -270,7 +291,7 @@ export async function detectProjectContext(rootPath: string): Promise<ProjectCon
 
   // Default to detected language or generic
   if (!context.language) {
-    context.language = "text";
+    context.language = "unknown";
   }
 
   return context;
