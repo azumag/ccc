@@ -16,7 +16,7 @@ import type { BotConfig, BotStats, CLIConfig, LogLevel } from "./src/types.ts";
 import { detectProjectContext, VERSION } from "./src/utils.ts";
 import { SimpleLogger } from "./src/logger.ts";
 import { TmuxSessionManager } from "./src/tmux.ts";
-import { ClaudeDiscordBot } from "./src/bot.ts";
+// import { ClaudeDiscordBot } from "./src/bot.ts"; // Temporarily disabled due to class duplication
 
 // SimpleLogger is now imported from src/logger.ts
 
@@ -47,13 +47,14 @@ class ClaudeDiscordBot {
   constructor(config: BotConfig, workingDir?: string) {
     this.config = config;
     this.logger = new SimpleLogger(config.logLevel);
-    this.tmuxManager = new SimpleTmuxManager(
+    this.tmuxManager = new TmuxSessionManager(
       config.tmuxSessionName,
       this.logger,
-      config,
-      workingDir,
+      config.useDangerouslySkipPermissions || false,
+      config.enableResume || false,
+      config.enableContinue || false,
     );
-    this.tmuxManager.workingDir = workingDir;
+    // workingDir is handled internally by TmuxSessionManager
 
     this.client = new Client({
       intents: [
@@ -98,8 +99,8 @@ class ClaudeDiscordBot {
   private async initializeClaudeSession(): Promise<void> {
     this.logger.info("Initializing Claude session...");
 
-    if (!await this.tmuxManager.sessionExists()) {
-      const created = await this.tmuxManager.createSession();
+    if (!await this.tmuxManager.hasSession()) {
+      const created = await this.tmuxManager.createSession(this.config.projectContext.rootPath);
       if (created) {
         this.logger.info("Claude session initialized successfully");
         this.stats.sessionStatus = { exists: true, uptime: "Started" };
@@ -263,7 +264,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
         } prompt (${modeDescription} mode) to tmux session: ${this.config.tmuxSessionName}`,
       );
       this.logger.debug(`Enhanced prompt to send: ${enhancedPrompt.substring(0, 300)}...`);
-      const success = await this.tmuxManager.sendCommand(enhancedPrompt);
+      const success = await this.tmuxManager.sendPrompt(enhancedPrompt);
 
       if (success) {
         const _duration = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -415,7 +416,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
   private async sendStatus(message: Message): Promise<void> {
     const uptime = Date.now() - this.stats.startTime.getTime();
     const uptimeStr = this.formatDuration(uptime);
-    const sessionExists = await this.tmuxManager.sessionExists();
+    const sessionExists = await this.tmuxManager.hasSession();
 
     const status = `**📊 Claude Discord Bot ステータス**
 
@@ -450,7 +451,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
       await killCmd.spawn().status;
 
       // Create new session
-      const success = await this.tmuxManager.createSession();
+      const success = await this.tmuxManager.createSession(this.config.projectContext.rootPath);
 
       if (success) {
         await message.reply("✅ Claude セッションが再起動されました。");
@@ -618,7 +619,7 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
       }
 
       // Kill tmux session
-      await this.tmuxManager.sessionExists() && await this.killTmuxSession();
+      await this.tmuxManager.hasSession() && await this.killTmuxSession();
 
       this.client.destroy();
       this.logger.info("Bot shutdown completed");
