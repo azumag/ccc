@@ -13,14 +13,8 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-import type {
-  BotConfig,
-  BotStats,
-  CLIConfig,
-} from "./src/types.ts";
-import {
-  VERSION,
-} from "./src/utils.ts";
+import type { BotConfig, BotStats, CLIConfig } from "./src/types.ts";
+import { VERSION } from "./src/utils.ts";
 
 // Bot classes
 class SimpleLogger {
@@ -793,8 +787,8 @@ export class ClaudeDiscordBotCLI {
       boolean: [
         "help",
         "version",
-        "verbose",
         "global",
+        "verbose",
         "ultrathink",
         "dangerous-permit",
         "resume",

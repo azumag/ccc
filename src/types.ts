@@ -2,6 +2,66 @@
  * Shared interfaces and types for Claude Discord Bot CLI
  */
 
+// Log level type definition
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+// Logger interface
+export interface Logger {
+  debug(message: string, ...args: unknown[]): void;
+  info(message: string, ...args: unknown[]): void;
+  warn(message: string, ...args: unknown[]): void;
+  error(message: string, ...args: unknown[]): void;
+  setLevel(level: LogLevel): void;
+}
+
+// Command execution result
+export interface CommandResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+  success: boolean;
+}
+
+// Tmux command structure
+export interface TmuxCommand {
+  args: string[];
+  cwd?: string;
+}
+
+// Tmux session status
+export interface TmuxSessionStatus {
+  exists: boolean;
+  uptime: string;
+  paneCount?: number;
+}
+
+// Project context information
+export interface ProjectContext {
+  rootPath: string;
+  projectName?: string;
+  name?: string;
+  type?: string;
+  language?: string;
+  framework?: string;
+  packageManager?: string;
+  gitRepo?: string;
+}
+
+// Claude response structure
+export interface ClaudeResponse {
+  content: string;
+  success: boolean;
+  error?: string;
+  executionTime?: number;
+}
+
+// Special command definition
+export interface SpecialCommand {
+  name: string;
+  description: string;
+  handler: (message: unknown) => Promise<void>;
+}
+
 export interface CLIConfig {
   projectPath: string;
   channelName: string;
@@ -9,7 +69,7 @@ export interface CLIConfig {
   guildId?: string;
   authorizedUserId?: string;
   tmuxSessionName: string;
-  logLevel: string;
+  logLevel: LogLevel;
   orchestratorMode?: boolean;
 }
 
@@ -19,7 +79,7 @@ export interface BotConfig {
   authorizedUserId?: string;
   channelName: string;
   tmuxSessionName: string;
-  logLevel: string;
+  logLevel: LogLevel;
   enableUltraThink?: boolean;
   orchestratorMode?: boolean;
   useDangerouslySkipPermissions?: boolean;
@@ -29,6 +89,7 @@ export interface BotConfig {
   autoPush?: boolean;
   progressUpdate?: boolean;
   progressInterval?: string;
+  projectContext: ProjectContext;
 }
 
 export interface BotStats {

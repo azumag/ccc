@@ -15,15 +15,15 @@ Deno.test("parseArgs - basic parsing", () => {
   const args = ["--channel", "test-channel", "--log-level", "debug"];
   const parsed = parseArgs(args);
 
-  assertEquals(parsed.channelName, "test-channel");
-  assertEquals(parsed.logLevel, "debug");
+  assertEquals(parsed.channel, "test-channel");
+  assertEquals(parsed["log-level"], "debug");
 });
 
 Deno.test("parseArgs - short flags", () => {
   const args = ["-c", "my-channel", "-h"];
   const parsed = parseArgs(args);
 
-  assertEquals(parsed.channelName, "my-channel");
+  assertEquals(parsed.channel, "my-channel");
   assertEquals(parsed.help, true);
 });
 
@@ -38,7 +38,7 @@ Deno.test("parseArgs - empty args", () => {
   const args: string[] = [];
   const parsed = parseArgs(args);
 
-  assertEquals(parsed.channelName, undefined);
+  assertEquals(parsed.channel, undefined);
   assertEquals(parsed.help, undefined);
   assertEquals(parsed.version, undefined);
 });

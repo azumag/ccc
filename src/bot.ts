@@ -732,7 +732,7 @@ async function main(): Promise<void> {
   }
 
   // Get channel name
-  const channelName = args.channelName ||
+  const channelName = args.channel ||
     Deno.env.get("DISCORD_CHANNEL_NAME") ||
     "claude";
 
