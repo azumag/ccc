@@ -2,6 +2,9 @@
 .env
 .env.local
 .env.production
+.ccc.env
+.ccc.env.local
+.ccc.env.production
 
 # Dependencies
 node_modules/

@@ -111,7 +111,18 @@ TMUX_SESSION_NAME=claude-main
 LOG_LEVEL=info
 ```
 
-### 3. PATH設定（必要に応じて）
+### 3. 環境変数ファイルについて
+
+このプロジェクトは `.ccc.env` ファイルを使用します（従来の `.env` ではありません）。これにより、他のプロジェクトの `.env` ファイルと干渉することなく環境変数を管理できます。
+
+既存の `.env` ファイルがある場合は、以下のコマンドで移行してください：
+
+```bash
+# 既存の .env を .ccc.env にコピー
+cp .env .ccc.env
+```
+
+### 4. PATH設定（必要に応じて）
 
 ```bash
 # Denoのバイナリを PATH に追加（永続的）
@@ -207,8 +218,8 @@ import {
 
 ```bash
 # 1. 環境変数準備
-cp .env.example .env
-# .envファイルを編集
+cp .ccc.env.example .ccc.env
+# .ccc.envファイルを編集
 
 # 2. Docker Compose起動
 docker-compose up -d
@@ -784,7 +795,7 @@ tests/
 └── integration.test.ts  # 統合テスト
 
 deno.json            # Deno設定・依存関係
-.env.example         # 環境変数テンプレート
+.ccc.env.example     # 環境変数テンプレート
 ```
 
 ### 開発用コマンド
@@ -956,8 +967,8 @@ Claude Discord Bot CLI は既存プロジェクトの安全性を最優先に設
 
 - **`README.md`** - 既存のドキュメントは完全に保護
 - **`src/` ディレクトリ** - 既存のソースコードには一切手を加えない
-- **既存の `.env`** - 環境変数に追記のみ、既存設定は保持
-- **既存の `.env.example`** - テンプレートに追記のみ
+- **既存の `.ccc.env`** - 環境変数に追記のみ、既存設定は保持
+- **既存の `.ccc.env.example`** - テンプレートに追記のみ
 
 ### ➕ 作成・更新されるファイル
 
@@ -973,14 +984,14 @@ claude-discord-bot init
 # ⏭️  Skipping src/bot.ts (src files are not modified)
 # ⏭️  Skipping README.md (file already exists)
 # 📄 処理されたファイル:
-#   - .env (Discord設定)
-#   - .env.example (設定テンプレート)  
+#   - .ccc.env (Discord設定)
+#   - .ccc.env.example (設定テンプレート)  
 #   - deno.json (Deno設定)
 ```
 
 ## 🔒 セキュリティ
 
-- **環境変数**: 機密情報は`.env`ファイルで管理
+- **環境変数**: 機密情報は`.ccc.env`ファイルで管理
 - **Git除外**: `.gitignore`で機密情報を除外
 - **作業範囲制限**: プロジェクトディレクトリ内での作業
 - **ユーザー認証**: 特定ユーザーIDで認証（オプション）
@@ -1065,8 +1076,8 @@ volumes:
 
 ```bash
 # 環境変数ファイル準備
-cp .env.example .env
-# .envファイルを編集
+cp .ccc.env.example .ccc.env
+# .ccc.envファイルを編集
 
 # ビルドと起動
 docker-compose up -d

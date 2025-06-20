@@ -969,7 +969,7 @@ ${colors.yellow("EXAMPLES:")}
 
     console.log(colors.green("\n✅ セットアップ完了！"));
     console.log(`\n次のステップ:`);
-    console.log(`1. Discord Bot を作成して .env ファイルに設定`);
+    console.log(`1. Discord Bot を作成して .ccc.env ファイルに設定`);
     console.log(`2. ${colors.cyan("claude-discord-bot start")} でBot起動`);
   }
 
@@ -1071,15 +1071,15 @@ ${colors.yellow("EXAMPLES:")}
   private async createConfigFiles(config: CLIConfig, _projectInfo: object): Promise<void> {
     const createdFiles: string[] = [];
 
-    // Create .env file
+    // Create .ccc.env file
     const envContent = await this.generateEnvFile(config, config.projectPath);
-    await Deno.writeTextFile(join(config.projectPath, ".env"), envContent);
-    createdFiles.push(".env (Discord設定)");
+    await Deno.writeTextFile(join(config.projectPath, ".ccc.env"), envContent);
+    createdFiles.push(".ccc.env (Discord設定)");
 
-    // Create .env.example
+    // Create .ccc.env.example
     const envExampleContent = await this.generateEnvExampleFile(config.projectPath);
-    await Deno.writeTextFile(join(config.projectPath, ".env.example"), envExampleContent);
-    createdFiles.push(".env.example (設定テンプレート)");
+    await Deno.writeTextFile(join(config.projectPath, ".ccc.env.example"), envExampleContent);
+    createdFiles.push(".ccc.env.example (設定テンプレート)");
 
     console.log(`\n📄 処理されたファイル:`);
     for (const file of createdFiles) {
@@ -1088,11 +1088,11 @@ ${colors.yellow("EXAMPLES:")}
   }
 
   protected async generateEnvFile(config: CLIConfig, projectPath: string): Promise<string> {
-    const envPath = join(projectPath as string, ".env");
+    const envPath = join(projectPath as string, ".ccc.env");
     let existingContent = "";
     const existingVars = new Map<string, string>();
 
-    // 既存の.envファイルを読み込み
+    // 既存の.ccc.envファイルを読み込み
     try {
       existingContent = await Deno.readTextFile(envPath);
       // 既存の環境変数を解析
@@ -1174,10 +1174,10 @@ ${colors.yellow("EXAMPLES:")}
   }
 
   private async generateEnvExampleFile(projectPath: string): Promise<string> {
-    const envExamplePath = join(projectPath, ".env.example");
+    const envExamplePath = join(projectPath, ".ccc.env.example");
     let existingContent = "";
 
-    // 既存の.env.exampleファイルを読み込み
+    // 既存の.ccc.env.exampleファイルを読み込み
     try {
       existingContent = await Deno.readTextFile(envExamplePath);
     } catch {
@@ -1223,7 +1223,7 @@ LOG_LEVEL=info
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
 
     const projectPath = args.project || Deno.cwd();
-    const envPath = join(projectPath as string, ".env");
+    const envPath = join(projectPath as string, ".ccc.env");
 
     // Use global directory if local files don't exist or --global flag is used
     const useGlobal = args.global || !await exists(envPath);
@@ -1233,7 +1233,7 @@ LOG_LEVEL=info
       console.log(colors.yellow("🌐 グローバルモードで起動中..."));
       const homeDir = Deno.env.get("HOME") || Deno.env.get("USERPROFILE") || "/tmp";
       const globalDir = join(homeDir, ".claude-discord-bot");
-      configPath = join(globalDir, ".env");
+      configPath = join(globalDir, ".ccc.env");
 
       if (!await exists(configPath)) {
         console.log(colors.red("❌ グローバル設定が見つかりません"));
@@ -1244,7 +1244,7 @@ LOG_LEVEL=info
       configPath = envPath;
 
       if (!await exists(envPath)) {
-        console.log(colors.red("❌ .env ファイルが見つかりません"));
+        console.log(colors.red("❌ .ccc.env ファイルが見つかりません"));
         console.log("まず 'claude-discord-bot init' を実行してください");
         return;
       }

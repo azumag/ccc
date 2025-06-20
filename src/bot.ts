@@ -703,7 +703,7 @@ export class ClaudeDiscordBot {
  */
 async function main(): Promise<void> {
   // Load environment variables
-  await load({ export: true });
+  await load({ export: true, envPath: ".ccc.env" });
 
   // Parse command line arguments
   const args = parseArgs(Deno.args);

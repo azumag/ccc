@@ -424,7 +424,7 @@ export class ClaudeDiscordBot {
 // Auto-start when run directly
 if (import.meta.main) {
   // Load environment variables
-  await load({ export: true });
+  await load({ export: true, envPath: ".ccc.env" });
 
   // Validate required environment variables
   const requiredVars = [
