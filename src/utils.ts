@@ -12,7 +12,7 @@ export function formatUptime(uptimeMs: number): string {
   const seconds = Math.floor(uptimeMs / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
-  
+
   if (hours > 0) {
     return `${hours}時間${minutes % 60}分`;
   } else if (minutes > 0) {
@@ -24,14 +24,14 @@ export function formatUptime(uptimeMs: number): string {
 
 export function chunkString(str: string, maxLength: number): string[] {
   if (str.length <= maxLength) return [str];
-  
+
   const chunks: string[] = [];
   let currentIndex = 0;
-  
+
   while (currentIndex < str.length) {
     chunks.push(str.slice(currentIndex, currentIndex + maxLength));
     currentIndex += maxLength;
   }
-  
+
   return chunks;
 }

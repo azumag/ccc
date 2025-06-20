@@ -12,7 +12,8 @@
 - 🔄 **Persistent Sessions**: Maintains Claude sessions via tmux
 - 🧠 **Enhanced Modes**: Orchestrator, ultrathink, auto-commit/push
 - 📊 **Progress Tracking**: Real-time progress updates for long tasks
-- 🛡️ **Flexible Permissions**: Optional permission skipping
+- 🛡️ **Security**: Granular permissions instead of --allow-all
+- 🔧 **Modular Design**: Shared types and utilities eliminate code duplication
 
 ## 🚀 Quick Start
 

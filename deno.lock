@@ -240,7 +240,8 @@
     "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/prompt.ts": "f10e1c8a0c2ca093a485f7f1156342210b27a8cffc96fe0b4cff60007cabab30",
     "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/secret.ts": "cece271c7ce01e12b249c31c2f9cea9e53b6e6be7621a478dac902bd8f288b61",
     "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/select.ts": "c10902aeaca02a55d9b846934958dd166ee39c741faebdaa9800689e402186cf",
-    "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/toggle.ts": "028f80de31750e7b5479727a64b4878f090ecd783fe3bb0d286e2e1c29f0eee3"
+    "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/toggle.ts": "028f80de31750e7b5479727a64b4878f090ecd783fe3bb0d286e2e1c29f0eee3",
+    "https://raw.githubusercontent.com/azumag/ccc/main/src/utils.ts": "eb83abe5e7c6c5a1251a1c26b82eb2d32f50ae37fcc79fbc3ed884a91055b094"
   },
   "workspace": {
     "dependencies": [

@@ -13,9 +13,14 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-import type { CLIConfig, BotConfig, BotStats } from "https://raw.githubusercontent.com/azumag/ccc/main/src/types.ts";
-import { VERSION, getHomeDirectory, formatUptime, chunkString } from "https://raw.githubusercontent.com/azumag/ccc/main/src/utils.ts";
-
+import type {
+  BotConfig,
+  BotStats,
+  CLIConfig,
+} from "https://raw.githubusercontent.com/azumag/ccc/main/src/types.ts";
+import {
+  VERSION,
+} from "https://raw.githubusercontent.com/azumag/ccc/main/src/utils.ts";
 
 // Bot classes
 class SimpleLogger {

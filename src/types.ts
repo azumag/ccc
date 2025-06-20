@@ -55,10 +55,10 @@ export const IMPORT_CONFIGS = {
   },
   "full-urls": {
     parseArgs: "jsr:@std/cli/parse-args",
-    dotenv: "jsr:@std/dotenv", 
+    dotenv: "jsr:@std/dotenv",
     fs: "jsr:@std/fs",
     path: "jsr:@std/path",
-  }
+  },
 } as const;
 
 export type ImportType = keyof typeof IMPORT_CONFIGS;
