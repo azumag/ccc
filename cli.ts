@@ -827,6 +827,7 @@ export class ClaudeDiscordBotCLI {
       boolean: [
         "help",
         "version",
+        "global",
         "verbose",
         "ultrathink",
         "dangerous-permit",
