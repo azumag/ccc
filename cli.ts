@@ -14,155 +14,18 @@ import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@
 
 import type { BotConfig, BotStats, CLIConfig, LogLevel } from "./src/types.ts";
 import { detectProjectContext, VERSION } from "./src/utils.ts";
+import { SimpleLogger } from "./src/logger.ts";
+import { TmuxSessionManager } from "./src/tmux.ts";
+import { ClaudeDiscordBot } from "./src/bot.ts";
 
-// Bot classes
-class SimpleLogger {
-  constructor(private level: string) {}
+// SimpleLogger is now imported from src/logger.ts
 
-  info(message: string) {
-    if (["debug", "info"].includes(this.level)) {
-      console.log(`[INFO] ${new Date().toISOString()} - ${message}`);
-    }
-  }
-
-  debug(message: string) {
-    if (this.level === "debug") {
-      console.log(`[DEBUG] ${new Date().toISOString()} - ${message}`);
-    }
-  }
-
-  warn(message: string) {
-    if (["debug", "info", "warn"].includes(this.level)) {
-      console.warn(`[WARN] ${new Date().toISOString()} - ${message}`);
-    }
-  }
-
-  error(message: string) {
-    console.error(`[ERROR] ${new Date().toISOString()} - ${message}`);
-  }
-}
-
-class SimpleTmuxManager {
-  public workingDir?: string;
-
-  constructor(
-    private sessionName: string,
-    private logger: SimpleLogger,
-    private config: BotConfig,
-    workingDir?: string,
-  ) {
-    this.workingDir = workingDir;
-  }
-
-  async createSession(): Promise<boolean> {
-    try {
-      const workDir = this.workingDir || Deno.cwd();
-      this.logger.info(`Creating tmux session: ${this.sessionName} in ${workDir}`);
-
-      const cmd = new Deno.Command("tmux", {
-        args: ["new-session", "-d", "-s", this.sessionName],
-        cwd: workDir,
-      });
-
-      const process = cmd.spawn();
-      const status = await process.status;
-
-      if (status.success) {
-        // Build Claude command with dynamic flags
-        const claudeFlags = [];
-
-        if (this.config.useDangerouslySkipPermissions) {
-          claudeFlags.push("--dangerously-skip-permissions");
-        }
-
-        if (this.config.enableResume) {
-          claudeFlags.push("-r");
-        }
-
-        if (this.config.enableContinue) {
-          claudeFlags.push("-c");
-        }
-
-        const claudeCommand = `claude ${claudeFlags.join(" ")}`.trim();
-        this.logger.info(`Starting Claude Code with command: ${claudeCommand}`);
-
-        // Start Claude Code in the session
-        await this.sendCommand(claudeCommand);
-        this.logger.info("Claude Code session started successfully");
-
-        // Setup Discord helper script will be done in bot initialization
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      this.logger.error(`Failed to create tmux session: ${error}`);
-      return false;
-    }
-  }
-
-  async sendCommand(command: string): Promise<boolean> {
-    try {
-      // Clean command (remove trailing newlines)
-      const cleanCommand = command.trim();
-      this.logger.debug(`Sending command to tmux: "${cleanCommand}"`);
-
-      // Send command text first with option terminator to handle commands starting with -
-      const commandCmd = new Deno.Command("tmux", {
-        args: ["send-keys", "-t", this.sessionName, "--", cleanCommand],
-      });
-
-      const commandProcess = commandCmd.spawn();
-      const commandStatus = await commandProcess.status;
-
-      if (!commandStatus.success) {
-        this.logger.error("Failed to send command text");
-        return false;
-      }
-
-      // Longer delay before sending Enter for reliability
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      // Send Enter key using C-m (carriage return) for better reliability
-      const enterCmd = new Deno.Command("tmux", {
-        args: ["send-keys", "-t", this.sessionName, "C-m"],
-      });
-
-      const enterProcess = enterCmd.spawn();
-      const enterStatus = await enterProcess.status;
-
-      if (!enterStatus.success) {
-        this.logger.error("Failed to send Enter key");
-        return false;
-      }
-
-      this.logger.debug("Successfully sent command and Enter to tmux");
-      return true;
-    } catch (error) {
-      this.logger.error(`Failed to send command: ${error}`);
-      return false;
-    }
-  }
-
-  async sessionExists(): Promise<boolean> {
-    try {
-      const cmd = new Deno.Command("tmux", {
-        args: ["has-session", "-t", this.sessionName],
-      });
-
-      const process = cmd.spawn();
-      const status = await process.status;
-      return status.success;
-    } catch {
-      return false;
-    }
-  }
-}
+// SimpleTmuxManager is now replaced by TmuxSessionManager from src/tmux.ts
 
 class ClaudeDiscordBot {
   private config: BotConfig;
   private client: Client;
-  private tmuxManager: SimpleTmuxManager;
+  private tmuxManager: TmuxSessionManager;
   private logger: SimpleLogger;
   private targetChannelId = "";
   private stats: BotStats;
