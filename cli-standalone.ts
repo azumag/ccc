@@ -13,8 +13,8 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-import type { BotConfig, BotStats, CLIConfig } from "./src/types.ts";
-import { VERSION } from "./src/utils.ts";
+import type { BotConfig, BotStats, CLIConfig, LogLevel } from "./src/types.ts";
+import { detectProjectContext, VERSION } from "./src/utils.ts";
 
 // Bot classes
 class SimpleLogger {
@@ -1235,6 +1235,10 @@ LOG_LEVEL=info
       }
     }
 
+    // Detect project context
+    const workingDir = useGlobal ? Deno.cwd() : projectPath;
+    const projectContext = await detectProjectContext(workingDir);
+
     // Create bot configuration
     const config: BotConfig = {
       discordToken: Deno.env.get("DISCORD_BOT_TOKEN")!,
@@ -1242,7 +1246,7 @@ LOG_LEVEL=info
       authorizedUserId: Deno.env.get("AUTHORIZED_USER_ID"),
       channelName: Deno.env.get("DISCORD_CHANNEL_NAME") || "claude",
       tmuxSessionName: Deno.env.get("TMUX_SESSION_NAME") || "claude-main",
-      logLevel: Deno.env.get("LOG_LEVEL") || "info",
+      logLevel: (Deno.env.get("LOG_LEVEL") as LogLevel) || "info",
       enableUltraThink: args.ultrathink || false,
       orchestratorMode: args.orch || false,
       useDangerouslySkipPermissions: args["dangerous-permit"] || false,
@@ -1252,6 +1256,7 @@ LOG_LEVEL=info
       autoPush: args["auto-push"] || false,
       progressUpdate: args["progress-update"] || false,
       progressInterval: args["progress-interval"] || "1m",
+      projectContext,
     };
 
     console.log(colors.green("🤖 Bot を起動しています..."));
@@ -1259,9 +1264,7 @@ LOG_LEVEL=info
 
     try {
       // Create and start bot directly
-      // Use the actual working directory where start command was executed
-      const workingDir = useGlobal ? Deno.cwd() : projectPath;
-      const bot = new ClaudeDiscordBot(config, workingDir as string);
+      const bot = new ClaudeDiscordBot(config);
       await bot.start();
 
       console.log(colors.green("✅ Bot が正常に起動しました"));
