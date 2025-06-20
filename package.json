@@ -7,10 +7,10 @@
     "claude-discord-bot": "./cli.ts"
   },
   "scripts": {
-    "build": "deno compile --allow-all --output ./bin/claude-discord-bot cli.ts",
-    "install-global": "deno install --global --allow-all -n claude-discord-bot cli.ts",
-    "test": "deno test --allow-all tests/",
-    "test:prompt": "deno test --allow-all tests/cli-prompt-generation.test.ts",
+    "build": "deno compile --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys --output ./bin/claude-discord-bot cli.ts",
+    "install-global": "deno install --global --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys -n claude-discord-bot cli.ts",
+    "test": "deno test --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys tests/",
+    "test:prompt": "deno test --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys tests/cli-prompt-generation.test.ts",
     "fmt": "deno fmt",
     "lint": "deno lint",
     "check": "deno check cli.ts mod.ts src/**/*.ts"

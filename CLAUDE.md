@@ -28,7 +28,7 @@ npm run build         # Compile to executable
 npm run install-global # Install globally
 
 # Development workflow after changes
-npm run build && /Users/azumag/.deno/bin/deno install --global --allow-all --config deno.json -f -n claude-discord-bot cli.ts
+npm run build && /Users/azumag/.deno/bin/deno install --global --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys --config deno.json -f -n claude-discord-bot cli.ts
 ```
 
 ## 🔨 最重要ルール - 新しいルールの追加プロセス

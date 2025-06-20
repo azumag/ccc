@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-all
+#!/usr/bin/env -S deno run --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys
 /**
  * Claude Discord Bot CLI Tool (Standalone Version)
  * Easy installation and management for Claude Discord Bot across multiple projects

@@ -24,10 +24,10 @@
     "@std/path": "jsr:@std/path@^1.0.0"
   },
   "tasks": {
-    "start": "deno run --allow-all src/bot.ts",
-    "dev": "deno run --allow-all --watch src/bot.ts",
-    "test": "deno test --allow-all tests/",
-    "test:watch": "deno test --allow-all --watch tests/",
+    "start": "deno run --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys src/bot.ts",
+    "dev": "deno run --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys --watch src/bot.ts",
+    "test": "deno test --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys tests/",
+    "test:watch": "deno test --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys --watch tests/",
     "fmt": "deno fmt",
     "lint": "deno lint",
     "check": "deno check src/**/*.ts tests/**/*.ts"

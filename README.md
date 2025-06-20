@@ -18,7 +18,7 @@
 
 ```bash
 # 1. Install from GitHub
-deno install --global --allow-all -n claude-discord-bot https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts
+deno install --global --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys -n claude-discord-bot https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts
 
 # 2. Initialize in your project
 cd your-project
@@ -33,7 +33,7 @@ claude-discord-bot start
 ### Method 1: GitHub Direct (Recommended)
 
 ```bash
-deno install --global --allow-all -n claude-discord-bot https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts
+deno install --global --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys -n claude-discord-bot https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts
 ```
 
 ### Method 2: Development/Customization
@@ -41,14 +41,14 @@ deno install --global --allow-all -n claude-discord-bot https://raw.githubuserco
 ```bash
 git clone https://github.com/azumag/ccc.git
 cd ccc
-deno install --global --allow-all -n claude-discord-bot ./cli.ts
+deno install --global --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys -n claude-discord-bot ./cli.ts
 ```
 
 ### Method 3: One-time Use
 
 ```bash
-deno run --allow-all https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts init
-deno run --allow-all https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts start
+deno run --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts init
+deno run --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys https://raw.githubusercontent.com/azumag/ccc/main/cli-standalone.ts start
 ```
 
 ## 🔧 Prerequisites
@@ -225,7 +225,7 @@ deno fmt
 deno lint
 
 # Build
-deno compile --allow-all --output ./bin/claude-discord-bot cli.ts
+deno compile --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys --output ./bin/claude-discord-bot cli.ts
 ```
 
 ## 📚 Programmatic Usage
