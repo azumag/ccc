@@ -17,10 +17,10 @@ import type {
   BotConfig,
   BotStats,
   CLIConfig,
-} from "https://raw.githubusercontent.com/azumag/ccc/main/src/types.ts";
+} from "./src/types.ts";
 import {
   VERSION,
-} from "https://raw.githubusercontent.com/azumag/ccc/main/src/utils.ts";
+} from "./src/utils.ts";
 
 // Bot classes
 class SimpleLogger {
