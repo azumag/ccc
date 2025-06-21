@@ -656,6 +656,10 @@ export class ClaudeDiscordBot {
     this.logger.info("Shutting down bot...");
 
     try {
+      // Remove signal listeners
+      process.removeAllListeners("SIGINT");
+      process.removeAllListeners("SIGTERM");
+
       // Stop response monitor
       if (this.responseMonitorInterval) {
         clearInterval(this.responseMonitorInterval);

@@ -26,17 +26,23 @@ async function createMockBotConfig(channelName = "test"): Promise<BotConfig> {
 
 Deno.test("ClaudeDiscordBot - constructor", async () => {
   const config = await createMockBotConfig();
-  const _bot = new ClaudeDiscordBot(config);
+  const bot = new ClaudeDiscordBot(config);
 
-  assertEquals(typeof _bot, "object");
+  assertEquals(typeof bot, "object");
+
+  // Properly cleanup resources
+  await bot.shutdown();
 });
 
 Deno.test("ClaudeDiscordBot - config validation", async () => {
   const config = await createMockBotConfig("valid-channel");
 
   // Should not throw with valid config
-  const _bot = new ClaudeDiscordBot(config);
-  assertEquals(typeof _bot, "object");
+  const bot = new ClaudeDiscordBot(config);
+  assertEquals(typeof bot, "object");
+
+  // Properly cleanup resources
+  await bot.shutdown();
 });
 
 // Mock Message class for testing
@@ -59,7 +65,7 @@ class MockMessage {
 
 Deno.test("ClaudeDiscordBot - special commands recognition", async () => {
   const config = await createMockBotConfig();
-  const _bot = new ClaudeDiscordBot(config);
+  const bot = new ClaudeDiscordBot(config);
 
   // Test /help command
   const helpMessage = new MockMessage("/help");
@@ -85,11 +91,14 @@ Deno.test("ClaudeDiscordBot - special commands recognition", async () => {
   const regularMessage = new MockMessage("create a React component");
   const isRegular = !regularMessage.content.startsWith("/");
   assertEquals(isRegular, true);
+
+  // Properly cleanup resources
+  await bot.shutdown();
 });
 
 Deno.test("ClaudeDiscordBot - message filtering", async () => {
   const config = await createMockBotConfig("target-channel");
-  const _bot = new ClaudeDiscordBot(config);
+  const bot = new ClaudeDiscordBot(config);
 
   // Test bot message filtering
   const botMessage = new MockMessage("test");
@@ -107,6 +116,9 @@ Deno.test("ClaudeDiscordBot - message filtering", async () => {
 
   const rightChannelMessage = new MockMessage("test", "target-channel");
   assertEquals(rightChannelMessage.channel.id === "target-channel", true);
+
+  // Properly cleanup resources
+  await bot.shutdown();
 });
 
 Deno.test("ClaudeDiscordBot - initialization", async () => {
@@ -118,6 +130,9 @@ Deno.test("ClaudeDiscordBot - initialization", async () => {
 
   // Config should be stored (testing through public interface)
   assertEquals(typeof bot, "object");
+
+  // Properly cleanup resources
+  await bot.shutdown();
 });
 
 // Test project context detection used in bot
@@ -148,6 +163,9 @@ Deno.test("ClaudeDiscordBot - project context integration", async () => {
 
     // Verify bot creation succeeded with project context
     assertEquals(typeof bot, "object");
+
+    // Properly cleanup resources
+    await bot.shutdown();
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }
@@ -161,6 +179,9 @@ Deno.test("ClaudeDiscordBot - stats initialization", async () => {
   // Bot should initialize successfully
   assertExists(bot);
   assertEquals(typeof bot, "object");
+
+  // Properly cleanup resources
+  await bot.shutdown();
 });
 
 // Test special commands array initialization
@@ -171,6 +192,9 @@ Deno.test("ClaudeDiscordBot - special commands initialization", async () => {
   // Bot should be created successfully with special commands
   assertExists(bot);
   assertEquals(typeof bot, "object");
+
+  // Properly cleanup resources
+  await bot.shutdown();
 });
 
 // Test graceful error handling
@@ -180,4 +204,7 @@ Deno.test("ClaudeDiscordBot - error handling configuration", async () => {
   // Should not throw even with invalid token (since we're not actually connecting)
   const bot = new ClaudeDiscordBot(config);
   assertExists(bot);
+
+  // Properly cleanup resources
+  await bot.shutdown();
 });

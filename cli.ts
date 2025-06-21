@@ -44,7 +44,7 @@ class ClaudeDiscordBot {
   private readonly BURST_DETECTION_WINDOW_MS = 30000; // 30 seconds to detect burst
   private readonly MAX_BUFFER_SIZE = 100; // Maximum messages to buffer before forcing execution
 
-  constructor(config: BotConfig, workingDir?: string) {
+  constructor(config: BotConfig, _workingDir?: string) {
     this.config = config;
     this.logger = new SimpleLogger(config.logLevel);
     this.tmuxManager = new TmuxSessionManager(
