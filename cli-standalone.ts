@@ -1436,7 +1436,7 @@ LOG_LEVEL=info
       logLevel: (Deno.env.get("LOG_LEVEL") as LogLevel) || "info",
       enableUltraThink: args.ultrathink || false,
       orchestratorMode: args.orch || false,
-      useDangerouslySkipPermissions: args["dangerously-permit"] || false,
+      useDangerouslySkipPermissions: args["dangerous-permit"] || false,
       enableResume: args.resume || false,
       enableContinue: args.continue || false,
       autoCommit: args["auto-commit"] || false,
