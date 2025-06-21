@@ -13,8 +13,188 @@ import { dirname as _dirname, join } from "jsr:@std/path";
 import { colors } from "https://deno.land/x/cliffy@v1.0.0-rc.3/ansi/colors.ts";
 import { Client, GatewayIntentBits, Message, TextChannel } from "npm:discord.js@14";
 
-import type { BotConfig, BotStats, CLIConfig, LogLevel } from "./src/types.ts";
-import { detectProjectContext, VERSION } from "./src/utils.ts";
+// Type definitions (embedded for standalone operation)
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+export interface ProjectContext {
+  rootPath: string;
+  projectName?: string;
+  name?: string;
+  type?: string;
+  language?: string;
+  framework?: string;
+  packageManager?: string;
+  gitRepo?: string;
+}
+
+export interface CLIConfig {
+  projectPath: string;
+  channelName: string;
+  discordToken?: string;
+  guildId?: string;
+  authorizedUserId?: string;
+  tmuxSessionName: string;
+  logLevel: LogLevel;
+  orchestratorMode?: boolean;
+}
+
+export interface BotConfig {
+  discordToken: string;
+  guildId: string;
+  authorizedUserId?: string;
+  channelName: string;
+  tmuxSessionName: string;
+  logLevel: LogLevel;
+  enableUltraThink?: boolean;
+  orchestratorMode?: boolean;
+  useDangerouslySkipPermissions?: boolean;
+  enableResume?: boolean;
+  enableContinue?: boolean;
+  autoCommit?: boolean;
+  autoPush?: boolean;
+  progressUpdate?: boolean;
+  progressInterval?: string;
+  projectContext: ProjectContext;
+}
+
+export interface BotStats {
+  startTime: Date;
+  messagesProcessed: number;
+  commandsExecuted: number;
+  lastActivity: Date;
+  sessionStatus: { exists: boolean; uptime: string };
+}
+
+// Constants
+export const VERSION = "1.26.1";
+
+// Utility functions (embedded for standalone operation)
+export async function detectProjectContext(rootPath: string): Promise<ProjectContext> {
+  const context: ProjectContext = {
+    rootPath,
+    projectName: rootPath.split("/").pop() || "unknown",
+  };
+
+  // Check for package.json (Node.js/JavaScript/TypeScript)
+  const packageJsonPath = join(rootPath, "package.json");
+  if (await exists(packageJsonPath)) {
+    try {
+      const packageJson = JSON.parse(await Deno.readTextFile(packageJsonPath));
+      context.projectName = packageJson.name || context.projectName;
+      context.language = "typescript";
+
+      // Detect framework
+      if (packageJson.dependencies || packageJson.devDependencies) {
+        const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+        if (deps.react) context.framework = "React";
+        else if (deps.vue) context.framework = "Vue";
+        else if (deps.angular) context.framework = "Angular";
+        else if (deps.next) context.framework = "Next.js";
+        else if (deps.nuxt) context.framework = "Nuxt.js";
+        else if (deps.express) context.framework = "Express";
+        else if (deps.fastify) context.framework = "Fastify";
+      }
+
+      // Detect package manager
+      if (await exists(join(rootPath, "package-lock.json"))) {
+        context.packageManager = "npm";
+      } else if (await exists(join(rootPath, "yarn.lock"))) {
+        context.packageManager = "yarn";
+      } else if (await exists(join(rootPath, "pnpm-lock.yaml"))) {
+        context.packageManager = "pnpm";
+      } else if (await exists(join(rootPath, "bun.lockb"))) {
+        context.packageManager = "bun";
+      } else {
+        // Default to npm for package.json projects without specific lock files
+        context.packageManager = "npm";
+      }
+    } catch (error) {
+      console.warn(`Warning: Could not parse package.json: ${error}`);
+    }
+  }
+
+  // Check for deno.json (Deno)
+  const denoJsonPath = join(rootPath, "deno.json");
+  if (await exists(denoJsonPath)) {
+    context.language = "typescript";
+    context.framework = "Deno";
+    context.packageManager = "deno";
+  }
+
+  // Check for Cargo.toml (Rust)
+  const cargoTomlPath = join(rootPath, "Cargo.toml");
+  if (await exists(cargoTomlPath)) {
+    try {
+      const cargoToml = await Deno.readTextFile(cargoTomlPath);
+      const nameMatch = cargoToml.match(/name\s*=\s*"([^"]+)"/);
+      if (nameMatch) context.projectName = nameMatch[1];
+      context.language = "rust";
+      context.packageManager = "cargo";
+    } catch (error) {
+      console.warn(`Warning: Could not parse Cargo.toml: ${error}`);
+    }
+  }
+
+  // Check for go.mod (Go)
+  const goModPath = join(rootPath, "go.mod");
+  if (await exists(goModPath)) {
+    try {
+      const goMod = await Deno.readTextFile(goModPath);
+      const moduleMatch = goMod.match(/module\s+([^\s]+)/);
+      if (moduleMatch && moduleMatch[1]) {
+        context.projectName = moduleMatch[1].split("/").pop() || context.projectName;
+      }
+      context.language = "go";
+      context.packageManager = "go";
+    } catch (error) {
+      console.warn(`Warning: Could not parse go.mod: ${error}`);
+    }
+  }
+
+  // Check for requirements.txt or pyproject.toml (Python)
+  const requirementsPath = join(rootPath, "requirements.txt");
+  const pyprojectPath = join(rootPath, "pyproject.toml");
+  if (await exists(requirementsPath) || await exists(pyprojectPath)) {
+    context.language = "python";
+    if (await exists(pyprojectPath)) {
+      context.packageManager = "pip/poetry";
+    } else {
+      context.packageManager = "pip";
+    }
+  }
+
+  // Check for git repository
+  const gitPath = join(rootPath, ".git");
+  if (await exists(gitPath)) {
+    try {
+      // Try to get git remote origin URL
+      const command = new Deno.Command("git", {
+        args: ["remote", "get-url", "origin"],
+        cwd: rootPath,
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const { code, stdout } = await command.output();
+      if (code === 0) {
+        const remoteUrl = new TextDecoder().decode(stdout).trim();
+        if (remoteUrl) {
+          context.gitRepo = remoteUrl;
+        }
+      }
+    } catch (error) {
+      // Git command failed, just mark as git repo without URL
+      console.warn(`Warning: Could not get git remote URL: ${error}`);
+      context.gitRepo = "local";
+    }
+  }
+
+  // Default to detected language or generic
+  if (!context.language) {
+    context.language = "unknown";
+  }
+
+  return context;
+}
 
 // Bot classes
 class SimpleLogger {
@@ -121,8 +301,15 @@ class SimpleTmuxManager {
         return false;
       }
 
-      // Longer delay before sending Enter for reliability
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      // Dynamic delay based on message length for better reliability
+      // Base delay 150ms + additional delay for long messages
+      const baseDelay = 150;
+      const messageLength = cleanCommand.length;
+      const additionalDelay = Math.min(Math.floor(messageLength / 1000) * 100, 2000); // Max 2 seconds additional
+      const totalDelay = baseDelay + additionalDelay;
+
+      this.logger.debug(`Message length: ${messageLength}, delay: ${totalDelay}ms`);
+      await new Promise((resolve) => setTimeout(resolve, totalDelay));
 
       // Send Enter key using C-m (carriage return) for better reliability
       const enterCmd = new Deno.Command("tmux", {
@@ -790,7 +977,7 @@ export class ClaudeDiscordBotCLI {
         "global",
         "verbose",
         "ultrathink",
-        "dangerous-permit",
+        "dangerously-permit",
         "resume",
         "continue",
         "orch",
@@ -1249,7 +1436,7 @@ LOG_LEVEL=info
       logLevel: (Deno.env.get("LOG_LEVEL") as LogLevel) || "info",
       enableUltraThink: args.ultrathink || false,
       orchestratorMode: args.orch || false,
-      useDangerouslySkipPermissions: args["dangerous-permit"] || false,
+      useDangerouslySkipPermissions: args["dangerously-permit"] || false,
       enableResume: args.resume || false,
       enableContinue: args.continue || false,
       autoCommit: args["auto-commit"] || false,

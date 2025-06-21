@@ -7,7 +7,7 @@ import { exists } from "@std/fs";
 import { join } from "@std/path";
 import type { ProjectContext } from "./types.ts";
 
-export const VERSION = "1.25.0";
+export const VERSION = "1.26.1";
 
 export function getHomeDirectory(): string {
   return Deno.env.get("HOME") || Deno.env.get("USERPROFILE") || "/tmp";
