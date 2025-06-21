@@ -137,9 +137,9 @@ Deno.test("dangerous-permit - only resume flag", () => {
 });
 
 Deno.test("dangerous-permit - CLI arg parsing test", () => {
-  // Simulate CLI argument parsing result for --dangerous-permit
+  // Simulate CLI argument parsing result for --dangerously-permit
   const args = {
-    "dangerous-permit": true,
+    "dangerously-permit": true,
     ultrathink: false,
     resume: false,
     continue: false,
@@ -152,7 +152,7 @@ Deno.test("dangerous-permit - CLI arg parsing test", () => {
     channelName: "test-channel",
     tmuxSessionName: "test-session",
     logLevel: "info",
-    useDangerouslySkipPermissions: args["dangerous-permit"] || false,
+    useDangerouslySkipPermissions: Boolean((args as Record<string, unknown>)["dangerously-permit"]) || false,
     enableResume: args.resume || false,
     enableContinue: args.continue || false,
   };
