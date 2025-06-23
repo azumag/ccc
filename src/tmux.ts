@@ -131,7 +131,7 @@ export class TmuxSessionManager {
     const commandLength = claudeCommand.length;
     const additionalDelay = Math.min(Math.floor(commandLength / 1000) * 100, 2000); // Max 2 seconds additional
     const totalDelay = baseDelay + additionalDelay;
-    
+
     this.logger.debug(`Command length: ${commandLength}, delay: ${totalDelay}ms`);
     await new Promise((resolve) => setTimeout(resolve, totalDelay));
 
@@ -189,7 +189,7 @@ export class TmuxSessionManager {
     const messageLength = cleanPrompt.length;
     const additionalDelay = Math.min(Math.floor(messageLength / 1000) * 100, 2000); // Max 2 seconds additional
     const totalDelay = baseDelay + additionalDelay;
-    
+
     this.logger.debug(`Message length: ${messageLength}, delay: ${totalDelay}ms`);
     await new Promise((resolve) => setTimeout(resolve, totalDelay));
 
@@ -232,7 +232,7 @@ export class TmuxSessionManager {
     const messageLength = cleanPrompt.length;
     const additionalDelay = Math.min(Math.floor(messageLength / 1000) * 100, 2000); // Max 2 seconds additional
     const totalDelay = baseDelay + additionalDelay;
-    
+
     this.logger.debug(`Message length: ${messageLength}, delay: ${totalDelay}ms`);
     await new Promise((resolve) => setTimeout(resolve, totalDelay));
 

@@ -106,7 +106,7 @@ class SimpleTmuxManager {
       const messageLength = cleanCommand.length;
       const additionalDelay = Math.min(Math.floor(messageLength / 1000) * 100, 2000); // Max 2 seconds additional
       const totalDelay = baseDelay + additionalDelay;
-      
+
       this.logger.debug(`Message length: ${messageLength}, delay: ${totalDelay}ms`);
       await new Promise((resolve) => setTimeout(resolve, totalDelay));
 

@@ -152,7 +152,8 @@ Deno.test("dangerous-permit - CLI arg parsing test", () => {
     channelName: "test-channel",
     tmuxSessionName: "test-session",
     logLevel: "info",
-    useDangerouslySkipPermissions: Boolean((args as Record<string, unknown>)["dangerously-permit"]) || false,
+    useDangerouslySkipPermissions:
+      Boolean((args as Record<string, unknown>)["dangerously-permit"]) || false,
     enableResume: args.resume || false,
     enableContinue: args.continue || false,
   };
