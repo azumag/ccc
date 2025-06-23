@@ -302,10 +302,10 @@ class SimpleTmuxManager {
       }
 
       // Dynamic delay based on message length for better reliability
-      // Base delay 150ms + additional delay for long messages
-      const baseDelay = 150;
+      // Base delay 200ms + additional delay for messages over 200 chars
+      const baseDelay = 200;
       const messageLength = cleanCommand.length;
-      const additionalDelay = Math.min(Math.floor(messageLength / 1000) * 100, 2000); // Max 2 seconds additional
+      const additionalDelay = Math.min(Math.floor(messageLength / 200) * 100, 2000); // Max 2 seconds additional
       const totalDelay = baseDelay + additionalDelay;
 
       this.logger.debug(`Message length: ${messageLength}, delay: ${totalDelay}ms`);
@@ -322,6 +322,17 @@ class SimpleTmuxManager {
       if (!enterStatus.success) {
         this.logger.error("Failed to send Enter key");
         return false;
+      }
+
+      // Send a second Enter key after a short delay for additional reliability on long messages
+      if (messageLength > 300) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const secondEnterCmd = new Deno.Command("tmux", {
+          args: ["send-keys", "-t", this.sessionName, "C-m"],
+        });
+        const secondEnterProcess = secondEnterCmd.spawn();
+        await secondEnterProcess.status;
+        this.logger.debug(`Sent second Enter for long message (${messageLength} chars)`);
       }
 
       this.logger.debug("Successfully sent command and Enter to tmux");

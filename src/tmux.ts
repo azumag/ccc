@@ -184,10 +184,10 @@ export class TmuxSessionManager {
     }
 
     // Dynamic delay based on message length for better reliability
-    // Base delay 150ms + additional delay for long messages
-    const baseDelay = 150;
+    // Base delay 200ms + additional delay for messages over 200 chars
+    const baseDelay = 200;
     const messageLength = cleanPrompt.length;
-    const additionalDelay = Math.min(Math.floor(messageLength / 1000) * 100, 2000); // Max 2 seconds additional
+    const additionalDelay = Math.min(Math.floor(messageLength / 200) * 100, 2000); // Max 2 seconds additional
     const totalDelay = baseDelay + additionalDelay;
 
     this.logger.debug(`Message length: ${messageLength}, delay: ${totalDelay}ms`);
@@ -201,6 +201,15 @@ export class TmuxSessionManager {
     if (!enterResult.success) {
       this.logger.error(`Failed to send Enter key: ${enterResult.stderr}`);
       return false;
+    }
+
+    // Send a second Enter key after a short delay for additional reliability on long messages
+    if (messageLength > 300) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const _secondEnterResult = await this.executeTmuxCommand({
+        args: ["send-keys", "-t", this.sessionName, "C-m"],
+      });
+      this.logger.debug(`Sent second Enter for long message (${messageLength} chars)`);
     }
 
     this.logger.debug(`Successfully sent prompt and Enter to Claude`);
@@ -227,10 +236,10 @@ export class TmuxSessionManager {
     }
 
     // Dynamic delay based on message length for better reliability
-    // Base delay 150ms + additional delay for long messages
-    const baseDelay = 150;
+    // Base delay 200ms + additional delay for messages over 200 chars
+    const baseDelay = 200;
     const messageLength = cleanPrompt.length;
-    const additionalDelay = Math.min(Math.floor(messageLength / 1000) * 100, 2000); // Max 2 seconds additional
+    const additionalDelay = Math.min(Math.floor(messageLength / 200) * 100, 2000); // Max 2 seconds additional
     const totalDelay = baseDelay + additionalDelay;
 
     this.logger.debug(`Message length: ${messageLength}, delay: ${totalDelay}ms`);
