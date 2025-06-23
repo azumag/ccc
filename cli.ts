@@ -361,14 +361,10 @@ class ClaudeDiscordBot {
       if (this.config.autoCommit || this.config.autoPush) {
         const actions = [];
         if (this.config.autoCommit) {
-          actions.push(
-            'git add . && git commit -m "task: Auto commit on task completion\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>"',
-          );
+          actions.push("commit");
         }
-        if (this.config.autoPush) actions.push("git push");
-        autoGitInstructions = `\n\n注意: タスク完了後、以下のコマンドを実行してください:\n${
-          actions.join(" && ")
-        }\n`;
+        if (this.config.autoPush) actions.push("push");
+        autoGitInstructions = `\n\n注意: タスク完了後、${actions.join(" と ")} をしてください。`;
       }
 
       // Add progress update instructions to prompt
@@ -385,11 +381,6 @@ claude-discord-bot send-to-discord "[現在の作業内容を詳しく説明]" -
 - 残りの作業量や推定時間
 - 発見した問題や重要な判断事項
 - 次のステップの予定
-
-報告例:
-- "ファイル解析を完了しました。src/配下の15ファイルを処理し、3つのTypeScriptエラーと2つの依存関係の問題を発見。現在、エラー修正に着手中で、残り作業時間は約10分の見込みです。"
-- "テスト実行中です。unit testsは全て通過（27/27）、integration testsで1件のタイムアウトエラーが発生。原因を調査中で、ネットワーク設定の問題と推測。並行してdocumentationの更新も進めています。"
-- "デプロイ作業を開始しました。ビルドが正常に完了し、現在Docker imageを作成中。その後、staging環境での検証とproduction環境への展開を予定。全体で約20分程度を見込んでいます。"
 `;
       }
 
