@@ -66,7 +66,7 @@ export interface BotStats {
 }
 
 // Constants
-export const VERSION = "1.26.3";
+export const VERSION = "1.27.0";
 
 // Utility functions (embedded for standalone operation)
 export async function detectProjectContext(rootPath: string): Promise<ProjectContext> {
