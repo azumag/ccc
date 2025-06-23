@@ -125,8 +125,15 @@ export class TmuxSessionManager {
       return false;
     }
 
-    // Wait before sending Enter key
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    // Dynamic delay based on command length for better reliability
+    // Base delay 150ms + additional delay for long commands
+    const baseDelay = 150;
+    const commandLength = claudeCommand.length;
+    const additionalDelay = Math.min(Math.floor(commandLength / 1000) * 100, 2000); // Max 2 seconds additional
+    const totalDelay = baseDelay + additionalDelay;
+    
+    this.logger.debug(`Command length: ${commandLength}, delay: ${totalDelay}ms`);
+    await new Promise((resolve) => setTimeout(resolve, totalDelay));
 
     // Send Enter key separately using C-m for better reliability
     const claudeResult = await this.executeTmuxCommand({
