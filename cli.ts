@@ -795,7 +795,14 @@ export class ClaudeDiscordBotCLI {
 
   async run(args: string[]): Promise<void> {
     const parsed = parseArgs(args, {
-      string: ["channel", "project", "log-level", "session", "progress-interval"],
+      string: [
+        "channel",
+        "project",
+        "log-level",
+        "session",
+        "progress-interval",
+        "monitor-channel",
+      ],
       boolean: [
         "help",
         "version",
@@ -886,6 +893,7 @@ ${colors.yellow("OPTIONS:")}
   --auto-push              Auto push when task completes
   --progress-update        Send progress updates to Discord during execution
   --progress-interval <int> Progress update interval (default: 1m, e.g. 30s, 2m)
+  --monitor-channel <id>   Monitor specified channel and forward messages to tmux
   -h, --help              Show this help
   -v, --version           Show version
 
@@ -900,6 +908,7 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot start --orch                   # Start with orchestrator mode
   claude-discord-bot start --auto-commit --auto-push # Start with auto git operations
   claude-discord-bot start --progress-update        # Start with progress reporting
+  claude-discord-bot start --monitor-channel 123456 # Monitor channel ID 123456
   claude-discord-bot start --global                 # Start from global directory
   claude-discord-bot status                         # Check bot status
   claude-discord-bot send-to-discord "Hello world"   # Send message to Discord
@@ -1191,6 +1200,7 @@ LOG_LEVEL=info
       "auto-push"?: boolean;
       "progress-update"?: boolean;
       "progress-interval"?: string;
+      "monitor-channel"?: string;
     },
   ): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
@@ -1269,6 +1279,7 @@ LOG_LEVEL=info
       autoPush: args["auto-push"] || false,
       progressUpdate: args["progress-update"] || false,
       progressInterval: args["progress-interval"] || "1m",
+      monitorChannelId: args["monitor-channel"],
       projectContext,
     };
 

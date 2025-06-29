@@ -31,16 +31,6 @@ npm run install-global # Install globally
 npm run build && /Users/azumag/.deno/bin/deno install --global --allow-read --allow-write=/tmp,.ccc.env,.ccc.env.example --allow-net=discord.com,gateway.discord.gg --allow-env --allow-run=tmux,claude,git --allow-sys --config deno.json -f -n claude-discord-bot cli.ts
 ```
 
-## 🔨 最重要ルール - 新しいルールの追加プロセス
-
-ユーザーから今回限りではなく常に対応が必要だと思われる指示を受けた場合：
-
-1. 「これを標準のルールにしますか？」と質問する
-2. YESの回答を得た場合、CLAUDE.mdに追加ルールとして記載する
-3. 以降は標準ルールとして常に適用する
-
-このプロセスにより、プロジェクトのルールを継続的に改善していきます
-
 ## QA Process
 
 タスク終了後、かならず以下のチェックを実行し、fixを行う

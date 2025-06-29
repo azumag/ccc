@@ -10,6 +10,7 @@ import { TmuxSessionManager } from "./tmux.ts";
 import { ClaudeCodeExecutor } from "./claude.ts";
 import { DiscordAPIBridge } from "./discord-api.ts";
 import { SimpleLogger } from "./logger.ts";
+import { ChannelMonitor } from "./channel-monitor.ts";
 import {
   detectProjectContext,
   formatDuration,
@@ -29,6 +30,7 @@ export class ClaudeDiscordBot {
   private stats: BotStats;
   private specialCommands: SpecialCommand[];
   private responseMonitorInterval?: number;
+  private channelMonitor: ChannelMonitor;
 
   // Message buffering configuration
   private messageBuffer: Map<string, { messages: Message[]; timer?: number }> = new Map();
@@ -67,6 +69,14 @@ export class ClaudeDiscordBot {
       lastActivity: new Date(),
       sessionStatus: { exists: false, uptime: "未開始" },
     };
+
+    // Initialize channel monitor
+    const monitoredChannels = config.monitorChannelId ? [config.monitorChannelId] : [];
+    this.channelMonitor = new ChannelMonitor(
+      this.tmuxManager,
+      this.logger,
+      monitoredChannels,
+    );
 
     this.specialCommands = this.initializeSpecialCommands();
     this.setupEventHandlers();
@@ -189,6 +199,10 @@ export class ClaudeDiscordBot {
         return;
       }
 
+      // Handle channel monitoring (before target channel check)
+      await this.channelMonitor.handleMessage(message);
+
+      // Process target channel messages for Claude execution
       if (message.channel.id !== this.targetChannelId) {
         this.logger.debug(
           `Message not in target channel. Expected: ${this.targetChannelId}, Got: ${message.channel.id}`,
@@ -638,6 +652,10 @@ export class ClaudeDiscordBot {
     this.logger.info("Starting Claude Discord Bot...");
     this.logger.info(`Project: ${this.config.projectContext.projectName}`);
     this.logger.info(`Channel: #${this.config.channelName}`);
+
+    if (this.config.monitorChannelId) {
+      this.logger.info(`📡 Monitor Channel: ${this.config.monitorChannelId}`);
+    }
 
     try {
       await this.client.login(this.config.discordToken);

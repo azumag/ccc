@@ -89,6 +89,7 @@ export interface BotConfig {
   autoPush?: boolean;
   progressUpdate?: boolean;
   progressInterval?: string;
+  monitorChannelId?: string;
   projectContext: ProjectContext;
 }
 
