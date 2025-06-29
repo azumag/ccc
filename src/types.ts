@@ -91,6 +91,7 @@ export interface BotConfig {
   progressInterval?: string;
   monitorChannelId?: string;
   monitorInterval?: string;
+  keepSessionOnShutdown?: boolean;
   projectContext: ProjectContext;
 }
 

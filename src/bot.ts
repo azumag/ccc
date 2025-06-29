@@ -225,8 +225,8 @@ export class ClaudeDiscordBot {
         }`,
       );
 
-      // Skip messages from this bot itself
-      if (message.author.id === this.client.user?.id) {
+      // Skip messages from this bot itself (but allow webhook messages)
+      if (message.author.id === this.client.user?.id && !message.webhookId) {
         this.logger.debug(`Skipping message from self: ${message.author.id}`);
         return;
       }
@@ -247,10 +247,11 @@ export class ClaudeDiscordBot {
         return;
       }
 
+      const messageSource = message.webhookId ? "webhook" : message.author.bot ? "bot" : "user";
       this.logger.info(
-        `Processing message from ${message.author.tag} (webhook: ${
-          message.webhookId ? "yes" : "no"
-        }): ${message.content.substring(0, 100)}...`,
+        `Processing message from ${message.author.tag} (${messageSource}): ${
+          message.content.substring(0, 100)
+        }...`,
       );
       await this.handleChannelMessage(message);
     });
@@ -683,7 +684,11 @@ export class ClaudeDiscordBot {
 
     // Combine all message contents
     const combinedPrompt = messages.map((msg, index) => {
-      return `[メッセージ ${index + 1} from ${msg.author.username}]: ${msg.content}`;
+      const messageSource = msg.webhookId ? "webhook" : msg.author.bot ? "bot" : "user";
+      const sourceLabel = messageSource === "webhook"
+        ? `${msg.author.username} (webhook)`
+        : msg.author.username;
+      return `[メッセージ ${index + 1} from ${sourceLabel}]: ${msg.content}`;
     }).join("\n\n");
 
     this.logger.info(`Combined prompt:\n${combinedPrompt.substring(0, 500)}...`);
@@ -863,8 +868,13 @@ export class ClaudeDiscordBot {
         }
       }
 
-      // Cleanup tmux session
-      await this.tmuxManager.killSession();
+      // Cleanup tmux session (optional)
+      if (!this.config.keepSessionOnShutdown) {
+        await this.tmuxManager.killSession();
+        this.logger.info("Tmux session cleaned up");
+      } else {
+        this.logger.info("Tmux session kept alive (keepSessionOnShutdown=true)");
+      }
 
       // Disconnect from Discord
       this.client.destroy();

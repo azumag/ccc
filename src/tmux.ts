@@ -175,7 +175,7 @@ export class TmuxSessionManager {
 
     // Send prompt text
     const promptResult = await this.executeTmuxCommand({
-      args: ["send-keys", "-t", this.sessionName, "--", cleanPrompt],
+      args: ["send-keys", "-t", `${this.sessionName}:0.0`, "--", cleanPrompt],
     });
 
     if (!promptResult.success) {
@@ -195,7 +195,7 @@ export class TmuxSessionManager {
 
     // Send Enter key using C-m (carriage return) for better reliability
     const enterResult = await this.executeTmuxCommand({
-      args: ["send-keys", "-t", this.sessionName, "C-m"],
+      args: ["send-keys", "-t", `${this.sessionName}:0.0`, "C-m"],
     });
 
     if (!enterResult.success) {
@@ -207,7 +207,7 @@ export class TmuxSessionManager {
     if (messageLength > 300) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       const _secondEnterResult = await this.executeTmuxCommand({
-        args: ["send-keys", "-t", this.sessionName, "C-m"],
+        args: ["send-keys", "-t", `${this.sessionName}:0.0`, "C-m"],
       });
       this.logger.debug(`Sent second Enter for long message (${messageLength} chars)`);
     }
@@ -227,7 +227,7 @@ export class TmuxSessionManager {
 
     // Type the prompt character by character and then send Enter
     const result = await this.executeTmuxCommand({
-      args: ["send-keys", "-t", this.sessionName, "-l", cleanPrompt],
+      args: ["send-keys", "-t", `${this.sessionName}:0.0`, "-l", cleanPrompt],
     });
 
     if (!result.success) {
@@ -247,7 +247,7 @@ export class TmuxSessionManager {
 
     // Send Enter
     const enterResult = await this.executeTmuxCommand({
-      args: ["send-keys", "-t", this.sessionName, "C-m"],
+      args: ["send-keys", "-t", `${this.sessionName}:0.0`, "C-m"],
     });
 
     if (enterResult.success) {

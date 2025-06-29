@@ -12,6 +12,7 @@ export class ChannelMonitor {
   private monitorInterval?: number;
   private lastMessageIds: Map<string, string> = new Map();
   private targetChannelId?: string;
+  private startTime: Date;
 
   constructor(
     private client: Client,
@@ -21,6 +22,7 @@ export class ChannelMonitor {
     private intervalMs: number = 60 * 60 * 1000, // Default 1 hour
   ) {
     this.monitoredChannelIds = new Set(monitoredChannels);
+    this.startTime = new Date(); // Record start time
 
     if (this.monitoredChannelIds.size > 0) {
       this.logger.info(
@@ -31,6 +33,7 @@ export class ChannelMonitor {
       this.logger.info(
         `⏰ Monitor interval: ${this.intervalMs / 1000 / 60} minutes`,
       );
+      this.logger.info(`🕒 Start time: ${this.startTime.toISOString()}`);
     }
   }
 
@@ -88,11 +91,19 @@ export class ChannelMonitor {
         // Get last message ID for this channel
         const lastMessageId = this.lastMessageIds.get(channelId);
 
-        // Fetch messages after the last known message
-        const messages = await textChannel.messages.fetch({
-          after: lastMessageId,
-          limit: 100,
-        });
+        // If no last message ID, use start time to avoid processing old messages
+        const fetchOptions: { limit: number; after?: string } = { limit: 100 };
+
+        if (lastMessageId) {
+          fetchOptions.after = lastMessageId;
+        } else {
+          // First time: get recent messages but only process those after start time
+          // Don't set 'after' to get some recent messages, but filter them by timestamp
+          this.logger.info(`📡 First check for channel ${channelId}, filtering by start time`);
+        }
+
+        // Fetch messages
+        const messages = await textChannel.messages.fetch(fetchOptions);
 
         if (messages.size === 0) {
           this.logger.debug(`📡 No new messages in channel ${channelId}`);
@@ -101,17 +112,39 @@ export class ChannelMonitor {
 
         this.logger.info(`📡 Found ${messages.size} new messages in channel ${channelId}`);
 
-        // Process messages in chronological order
-        const sortedMessages = Array.from(messages.values()).sort(
+        // Process messages in chronological order, but filter by start time if it's the first check
+        const allMessages = Array.from(messages.values()).sort(
           (a, b) => a.createdTimestamp - b.createdTimestamp,
         );
 
-        for (const message of sortedMessages) {
+        // Filter messages: only process those created after the monitor started
+        const messagesToProcess = allMessages.filter((message) => {
+          if (lastMessageId) {
+            // Not first check - process all fetched messages
+            return true;
+          } else {
+            // First check - only process messages created after start time
+            const messageTime = message.createdAt;
+            const shouldProcess = messageTime > this.startTime;
+            if (!shouldProcess) {
+              this.logger.debug(
+                `📡 Skipping old message from ${messageTime.toISOString()} (before start time ${this.startTime.toISOString()})`,
+              );
+            }
+            return shouldProcess;
+          }
+        });
+
+        this.logger.info(
+          `📡 Processing ${messagesToProcess.length} messages (${allMessages.length} fetched) in channel ${channelId}`,
+        );
+
+        for (const message of messagesToProcess) {
           await this.processMessage(message);
         }
 
-        // Update last message ID
-        const newestMessage = sortedMessages[sortedMessages.length - 1];
+        // Update last message ID - use the newest fetched message to track position
+        const newestMessage = allMessages[allMessages.length - 1];
         if (newestMessage) {
           this.lastMessageIds.set(channelId, newestMessage.id);
         }
@@ -132,8 +165,8 @@ export class ChannelMonitor {
    * Process a single message
    */
   private async processMessage(message: Message): Promise<void> {
-    // Skip bot messages
-    if (message.author.bot) {
+    // Skip bot messages (but allow webhook messages)
+    if (message.author.bot && !message.webhookId) {
       return;
     }
 
@@ -174,32 +207,16 @@ export class ChannelMonitor {
   }
 
   /**
-   * Send status report to the target channel (not monitored channels)
+   * Send status report (log only, not sent to Discord)
    */
-  private async sendStatusReport(): Promise<void> {
-    if (!this.targetChannelId) {
-      this.logger.debug("📡 No target channel set for status reports");
-      return;
-    }
-
+  private sendStatusReport(): void {
     const currentTime = new Date().toLocaleString("ja-JP");
-    const statusMessage = `🕒 **監視ステータス** (${currentTime})\n` +
+    const statusMessage = `🕒 監視ステータス (${currentTime})\n` +
       `現在 ${this.monitoredChannelIds.size} チャンネルを定期監視中です。\n` +
       `次回チェック: ${new Date(Date.now() + this.intervalMs).toLocaleTimeString("ja-JP")}`;
 
-    try {
-      const channel = await this.client.channels.fetch(this.targetChannelId);
-      if (channel && channel.isTextBased()) {
-        await (channel as TextChannel).send(statusMessage);
-        this.logger.info(`✅ Status report sent to target channel ${this.targetChannelId}`);
-      }
-    } catch (error) {
-      this.logger.error(
-        `❌ Failed to send status report to target channel: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
+    // Only log to console, don't send to Discord
+    this.logger.info(statusMessage);
   }
 
   /**

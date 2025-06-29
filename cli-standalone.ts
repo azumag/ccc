@@ -55,6 +55,8 @@ export interface BotConfig {
   progressUpdate?: boolean;
   progressInterval?: string;
   monitorChannelId?: string;
+  monitorInterval?: string;
+  keepSessionOnShutdown?: boolean;
   projectContext: ProjectContext;
 }
 
@@ -67,7 +69,7 @@ export interface BotStats {
 }
 
 // Constants
-export const VERSION = "1.31.0";
+export const VERSION = "1.32.0";
 
 // Utility functions (embedded for standalone operation)
 export async function detectProjectContext(rootPath: string): Promise<ProjectContext> {
@@ -950,8 +952,12 @@ claude-discord-bot send-to-discord "あなたの応答内容" --session ${this.c
         }
       }
 
-      // Kill tmux session
-      await this.tmuxManager.sessionExists() && await this.killTmuxSession();
+      // Kill tmux session (unless keepSessionOnShutdown is enabled)
+      if (!this.config.keepSessionOnShutdown) {
+        await this.tmuxManager.sessionExists() && await this.killTmuxSession();
+      } else {
+        this.logger.info("Keeping tmux session alive (keepSessionOnShutdown is enabled)");
+      }
 
       this.client.destroy();
       this.logger.info("Bot shutdown completed");
@@ -1004,6 +1010,7 @@ export class ClaudeDiscordBotCLI {
         "auto-commit",
         "auto-push",
         "progress-update",
+        "keep-session",
       ],
       alias: {
         h: "help",
@@ -1083,6 +1090,7 @@ ${colors.yellow("OPTIONS:")}
   --progress-interval <int> Progress update interval (default: 1m, e.g. 30s, 2m)
   --monitor-channel <name|id> Monitor specified channel (by name or ID) and forward messages to tmux
   --monitor-interval <t>   Monitor check interval (default: 1h, e.g. 30m, 2h)
+  --keep-session          Keep tmux session alive on bot shutdown
   -h, --help              Show this help
   -v, --version           Show version
 
@@ -1100,6 +1108,7 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot start --monitor-channel general # Monitor channel by name
   claude-discord-bot start --monitor-channel 123456 # Monitor channel by ID
   claude-discord-bot start --monitor-channel test --monitor-interval 30m # Monitor with custom interval
+  claude-discord-bot start --keep-session           # Keep tmux session on shutdown
   claude-discord-bot start --global                 # Start from global directory
   claude-discord-bot status                         # Check bot status
   claude-discord-bot send-to-discord "Hello world"   # Send message to Discord
@@ -1392,6 +1401,8 @@ LOG_LEVEL=info
       "progress-update"?: boolean;
       "progress-interval"?: string;
       "monitor-channel"?: string;
+      "monitor-interval"?: string;
+      "keep-session"?: boolean;
     },
   ): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
@@ -1471,6 +1482,8 @@ LOG_LEVEL=info
       progressUpdate: args["progress-update"] || false,
       progressInterval: args["progress-interval"] || "1m",
       monitorChannelId: args["monitor-channel"],
+      monitorInterval: args["monitor-interval"],
+      keepSessionOnShutdown: args["keep-session"] || false,
       projectContext,
     };
 
