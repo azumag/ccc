@@ -1202,6 +1202,7 @@ LOG_LEVEL=info
       "progress-update"?: boolean;
       "progress-interval"?: string;
       "monitor-channel"?: string;
+      "monitor-interval"?: string;
     },
   ): Promise<void> {
     console.log(colors.cyan("🚀 Claude Discord Bot 起動中..."));
@@ -1281,6 +1282,7 @@ LOG_LEVEL=info
       progressUpdate: args["progress-update"] || false,
       progressInterval: args["progress-interval"] || "1m",
       monitorChannelId: args["monitor-channel"],
+      monitorInterval: args["monitor-interval"],
       projectContext,
     };
 

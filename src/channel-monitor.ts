@@ -1,6 +1,6 @@
 /**
  * Discord Channel Monitor
- * Monitors specified Discord channels and forwards messages to tmux
+ * Periodically monitors specified Discord channels and forwards messages to tmux
  */
 
 import type { Client, Message, TextChannel } from "discord.js";
@@ -9,13 +9,16 @@ import type { Logger } from "./types.ts";
 
 export class ChannelMonitor {
   private readonly monitoredChannelIds: Set<string>;
-  private statusReportInterval?: number;
+  private monitorInterval?: number;
+  private lastMessageIds: Map<string, string> = new Map();
+  private targetChannelId?: string;
 
   constructor(
     private client: Client,
     private tmuxManager: TmuxSessionManager,
     private logger: Logger,
     monitoredChannels: string[] = [],
+    private intervalMs: number = 60 * 60 * 1000, // Default 1 hour
   ) {
     this.monitoredChannelIds = new Set(monitoredChannels);
 
@@ -25,44 +28,120 @@ export class ChannelMonitor {
           Array.from(this.monitoredChannelIds).join(", ")
         }`,
       );
-      this.startStatusReporting();
+      this.logger.info(
+        `⏰ Monitor interval: ${this.intervalMs / 1000 / 60} minutes`,
+      );
     }
   }
 
   /**
-   * Handle incoming Discord message and forward to tmux if from monitored channel
+   * Set the target channel ID for status reports
    */
-  public async handleMessage(message: Message): Promise<void> {
-    // Skip if no channels are being monitored
+  public setTargetChannelId(channelId: string): void {
+    this.targetChannelId = channelId;
+    this.logger.info(`📡 Set target channel for status reports: ${channelId}`);
+  }
+
+  /**
+   * Start periodic monitoring
+   */
+  public startMonitoring(): void {
     if (this.monitoredChannelIds.size === 0) {
-      this.logger.debug("📡 No channels being monitored, skipping message");
-      return;
-    }
-
-    // Skip bot messages and messages from non-monitored channels
-    if (message.author.bot) {
-      this.logger.debug(`📡 Skipping bot message from ${message.author.username}`);
-      return;
-    }
-
-    if (!this.monitoredChannelIds.has(message.channel.id)) {
-      this.logger.debug(
-        `📡 Message from non-monitored channel ${message.channel.id}, monitored: [${
-          Array.from(this.monitoredChannelIds).join(", ")
-        }]`,
-      );
+      this.logger.info("📡 No channels to monitor, skipping monitoring setup");
       return;
     }
 
     this.logger.info(
-      `📡 Processing monitored message from ${message.author.username} in channel ${message.channel.id}`,
+      `🕒 Starting periodic channel monitoring every ${this.intervalMs / 1000 / 60} minutes`,
     );
+
+    // Clear any existing interval
+    if (this.monitorInterval) {
+      clearInterval(this.monitorInterval);
+    }
+
+    // Run immediately on start
+    this.checkMonitoredChannels();
+
+    // Then run periodically
+    this.monitorInterval = setInterval(async () => {
+      await this.checkMonitoredChannels();
+    }, this.intervalMs) as unknown as number;
+  }
+
+  /**
+   * Check all monitored channels for new messages
+   */
+  private async checkMonitoredChannels(): Promise<void> {
+    this.logger.info("📡 Checking monitored channels for new messages...");
+
+    for (const channelId of this.monitoredChannelIds) {
+      try {
+        const channel = await this.client.channels.fetch(channelId);
+        if (!channel || !channel.isTextBased()) {
+          this.logger.warn(`❌ Channel ${channelId} not found or not text-based`);
+          continue;
+        }
+
+        const textChannel = channel as TextChannel;
+
+        // Get last message ID for this channel
+        const lastMessageId = this.lastMessageIds.get(channelId);
+
+        // Fetch messages after the last known message
+        const messages = await textChannel.messages.fetch({
+          after: lastMessageId,
+          limit: 100,
+        });
+
+        if (messages.size === 0) {
+          this.logger.debug(`📡 No new messages in channel ${channelId}`);
+          continue;
+        }
+
+        this.logger.info(`📡 Found ${messages.size} new messages in channel ${channelId}`);
+
+        // Process messages in chronological order
+        const sortedMessages = Array.from(messages.values()).sort(
+          (a, b) => a.createdTimestamp - b.createdTimestamp,
+        );
+
+        for (const message of sortedMessages) {
+          await this.processMessage(message);
+        }
+
+        // Update last message ID
+        const newestMessage = sortedMessages[sortedMessages.length - 1];
+        if (newestMessage) {
+          this.lastMessageIds.set(channelId, newestMessage.id);
+        }
+      } catch (error) {
+        this.logger.error(
+          `❌ Error checking channel ${channelId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+
+    // Send status report to target channel
+    await this.sendStatusReport();
+  }
+
+  /**
+   * Process a single message
+   */
+  private async processMessage(message: Message): Promise<void> {
+    // Skip bot messages
+    if (message.author.bot) {
+      return;
+    }
 
     try {
       // Format message with context information
       const channelName = this.getChannelName(message);
       const authorName = message.author.username || message.author.displayName;
-      const timestamp = new Date().toLocaleTimeString("ja-JP", {
+      const timestamp = message.createdAt.toLocaleTimeString("ja-JP", {
         hour: "2-digit",
         minute: "2-digit",
       });
@@ -84,19 +163,41 @@ export class ChannelMonitor {
         );
       } else {
         this.logger.error(
-          `❌ Failed to forward message from #${channelName} to tmux (sendCommand returned false)`,
+          `❌ Failed to forward message from #${channelName} to tmux`,
         );
       }
     } catch (error) {
       this.logger.error(
-        `❌ Error forwarding message to tmux: ${
+        `❌ Error processing message: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Send status report to the target channel (not monitored channels)
+   */
+  private async sendStatusReport(): Promise<void> {
+    if (!this.targetChannelId) {
+      this.logger.debug("📡 No target channel set for status reports");
+      return;
+    }
+
+    const currentTime = new Date().toLocaleString("ja-JP");
+    const statusMessage = `🕒 **監視ステータス** (${currentTime})\n` +
+      `現在 ${this.monitoredChannelIds.size} チャンネルを定期監視中です。\n` +
+      `次回チェック: ${new Date(Date.now() + this.intervalMs).toLocaleTimeString("ja-JP")}`;
+
+    try {
+      const channel = await this.client.channels.fetch(this.targetChannelId);
+      if (channel && channel.isTextBased()) {
+        await (channel as TextChannel).send(statusMessage);
+        this.logger.info(`✅ Status report sent to target channel ${this.targetChannelId}`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `❌ Failed to send status report to target channel: ${
           error instanceof Error ? error.message : String(error)
         }`,
-      );
-
-      // Log additional context for debugging
-      this.logger.debug(
-        `Error context: channel=${message.channel.id}, author=${message.author.id}, content_length=${message.content.length}`,
       );
     }
   }
@@ -122,6 +223,11 @@ export class ChannelMonitor {
   public addChannel(channelId: string): void {
     this.monitoredChannelIds.add(channelId);
     this.logger.info(`📡 Added channel ${channelId} to monitoring list`);
+
+    // Restart monitoring with new channel
+    if (this.monitorInterval) {
+      this.startMonitoring();
+    }
   }
 
   /**
@@ -131,6 +237,7 @@ export class ChannelMonitor {
     const removed = this.monitoredChannelIds.delete(channelId);
     if (removed) {
       this.logger.info(`📡 Removed channel ${channelId} from monitoring list`);
+      this.lastMessageIds.delete(channelId);
     }
     return removed;
   }
@@ -150,62 +257,13 @@ export class ChannelMonitor {
   }
 
   /**
-   * Start periodic status reporting (every hour)
+   * Stop monitoring
    */
-  private startStatusReporting(): void {
-    const ONE_HOUR_IN_MS = 60 * 60 * 1000;
-    this.logger.info(`🕒 Scheduling channel monitor status reports every 1 hour`);
-
-    // Clear any existing timer
-    if (this.statusReportInterval) {
-      clearInterval(this.statusReportInterval);
-    }
-
-    this.statusReportInterval = setInterval(async () => {
-      await this.reportStatus();
-    }, ONE_HOUR_IN_MS) as unknown as number;
-  }
-
-  /**
-   * Report current monitoring status to monitored channels
-   */
-  public async reportStatus(): Promise<void> {
-    if (this.monitoredChannelIds.size === 0) {
-      return;
-    }
-
-    const currentTime = new Date().toLocaleString("ja-JP");
-    const statusMessage = `🕒 **監視ステータス** (${currentTime})\n` +
-      `現在 ${this.monitoredChannelIds.size} チャンネルを監視中です。\n` +
-      `メッセージは tmux セッションに転送されています。`;
-
-    this.logger.info("📡 Reporting channel monitor status...");
-
-    for (const channelId of this.monitoredChannelIds) {
-      try {
-        const channel = await this.client.channels.fetch(channelId);
-        if (channel && channel.isTextBased()) {
-          await (channel as TextChannel).send(statusMessage);
-          this.logger.info(`✅ Status report sent to channel ${channelId}`);
-        }
-      } catch (error) {
-        this.logger.error(
-          `❌ Failed to send status report to channel ${channelId}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Stop periodic status reporting
-   */
-  public stopStatusReporting(): void {
-    if (this.statusReportInterval) {
-      clearInterval(this.statusReportInterval);
-      this.statusReportInterval = undefined;
-      this.logger.info("⏹️ Stopped channel monitor status reporting");
+  public stopMonitoring(): void {
+    if (this.monitorInterval) {
+      clearInterval(this.monitorInterval);
+      this.monitorInterval = undefined;
+      this.logger.info("⏹️ Stopped channel monitoring");
     }
   }
 }

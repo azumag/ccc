@@ -7,7 +7,7 @@ import { exists } from "@std/fs";
 import { join } from "@std/path";
 import type { ProjectContext } from "./types.ts";
 
-export const VERSION = "1.30.0";
+export const VERSION = "1.31.0";
 
 export function getHomeDirectory(): string {
   return Deno.env.get("HOME") || Deno.env.get("USERPROFILE") || "/tmp";
@@ -89,6 +89,7 @@ export function parseArgs(args: string[]) {
       "log-level",
       "progress-interval",
       "monitor-channel",
+      "monitor-interval",
     ],
     alias: {
       h: "help",
@@ -131,11 +132,12 @@ START OPTIONS:
   --progress-update        Enable progress updates
   --progress-interval <t>  Progress update interval (default: 1m)
   --monitor-channel <name> Monitor channel and forward to tmux
+  --monitor-interval <t>   Monitor check interval (default: 1h)
 
 EXAMPLES:
   claude-discord-bot init
   claude-discord-bot start --channel claude --orch
-  claude-discord-bot start --monitor-channel test --channel claude
+  claude-discord-bot start --monitor-channel test --monitor-interval 30m
   claude-discord-bot send-to-discord "Hello from CLI!"
   claude-discord-bot status
 `);

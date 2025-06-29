@@ -71,15 +71,46 @@ export class ClaudeDiscordBot {
     };
 
     // Initialize channel monitor (will be set up after bot is ready)
+    const monitorInterval = this.parseMonitorInterval(config.monitorInterval);
     this.channelMonitor = new ChannelMonitor(
       this.client,
       this.tmuxManager,
       this.logger,
       [], // Empty initially, will be configured after guild resolution
+      monitorInterval,
     );
 
     this.specialCommands = this.initializeSpecialCommands();
     this.setupEventHandlers();
+  }
+
+  /**
+   * Parse monitor interval string to milliseconds
+   */
+  private parseMonitorInterval(interval?: string): number {
+    if (!interval) {
+      return 60 * 60 * 1000; // Default 1 hour
+    }
+
+    const match = interval.match(/^(\d+)([smh])$/);
+    if (!match) {
+      this.logger.warn(`Invalid monitor interval format: ${interval}, using default 1h`);
+      return 60 * 60 * 1000;
+    }
+
+    const value = parseInt(match[1]!);
+    const unit = match[2]!;
+
+    switch (unit) {
+      case "s":
+        return value * 1000;
+      case "m":
+        return value * 60 * 1000;
+      case "h":
+        return value * 60 * 60 * 1000;
+      default:
+        return 60 * 60 * 1000;
+    }
   }
 
   /**
@@ -200,15 +231,11 @@ export class ClaudeDiscordBot {
         return;
       }
 
-      // Check if message is from a monitored channel
-      const isMonitored = this.channelMonitor.isMonitoring(message.channel.id);
-
-      if (isMonitored) {
+      // Skip messages from monitored channels (they are handled periodically)
+      if (this.channelMonitor.isMonitoring(message.channel.id)) {
         this.logger.debug(
-          `📡 Message is from monitored channel ${message.channel.id}. Forwarding to tmux and skipping Claude response.`,
+          `📡 Skipping message from monitored channel ${message.channel.id} (handled by periodic monitoring)`,
         );
-        await this.channelMonitor.handleMessage(message);
-        // Skip Claude processing for monitored channels
         return;
       }
 
@@ -271,6 +298,9 @@ export class ClaudeDiscordBot {
       this.targetChannelId = channel.id;
       this.logger.info(`🎯 監視対象チャネル: #${this.config.channelName} (${channel.id})`);
 
+      // Set target channel for monitor status reports
+      this.channelMonitor.setTargetChannelId(channel.id);
+
       // Send startup message
       await channel.send(
         `🤖 **Claude Discord Bot が起動しました**\n` +
@@ -318,8 +348,11 @@ export class ClaudeDiscordBot {
           `✅ Channel monitoring successfully configured for: ${this.config.monitorChannelId} → ${monitorChannelId}`,
         );
         this.logger.info(
-          `📡 Bot will now monitor messages in channel and forward them to tmux session: ${this.config.tmuxSessionName}`,
+          `📡 Bot will now periodically monitor messages in channel and forward them to tmux session: ${this.config.tmuxSessionName}`,
         );
+
+        // Start periodic monitoring
+        this.channelMonitor.startMonitoring();
       } else {
         this.logger.warn(
           `❌ Failed to resolve channel identifier: ${this.config.monitorChannelId}`,
@@ -805,8 +838,8 @@ export class ClaudeDiscordBot {
         clearInterval(this.responseMonitorInterval);
       }
 
-      // Stop channel monitor status reporting
-      this.channelMonitor.stopStatusReporting();
+      // Stop channel monitoring
+      this.channelMonitor.stopMonitoring();
 
       // Clear all message buffer timers
       for (const [channelId, buffer] of this.messageBuffer.entries()) {
