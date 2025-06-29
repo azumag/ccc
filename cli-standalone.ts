@@ -67,7 +67,7 @@ export interface BotStats {
 }
 
 // Constants
-export const VERSION = "1.28.0";
+export const VERSION = "1.29.0";
 
 // Utility functions (embedded for standalone operation)
 export async function detectProjectContext(rootPath: string): Promise<ProjectContext> {
@@ -1080,7 +1080,7 @@ ${colors.yellow("OPTIONS:")}
   --auto-push              Auto push when task completes
   --progress-update        Send progress updates to Discord during execution
   --progress-interval <int> Progress update interval (default: 1m, e.g. 30s, 2m)
-  --monitor-channel <id>   Monitor specified channel and forward messages to tmux
+  --monitor-channel <name|id> Monitor specified channel (by name or ID) and forward messages to tmux
   -h, --help              Show this help
   -v, --version           Show version
 
@@ -1095,7 +1095,8 @@ ${colors.yellow("EXAMPLES:")}
   claude-discord-bot start --orch                   # Start with orchestrator mode
   claude-discord-bot start --auto-commit --auto-push # Start with auto git operations
   claude-discord-bot start --progress-update        # Start with progress reporting
-  claude-discord-bot start --monitor-channel 123456 # Monitor channel ID 123456
+  claude-discord-bot start --monitor-channel general # Monitor channel by name
+  claude-discord-bot start --monitor-channel 123456 # Monitor channel by ID
   claude-discord-bot start --global                 # Start from global directory
   claude-discord-bot status                         # Check bot status
   claude-discord-bot send-to-discord "Hello world"   # Send message to Discord

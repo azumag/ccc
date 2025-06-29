@@ -4,7 +4,7 @@
  */
 
 import { load } from "@std/dotenv";
-import { Client, GatewayIntentBits, Message, TextChannel } from "discord.js";
+import { Client, GatewayIntentBits, Guild, Message, TextChannel } from "discord.js";
 import process from "node:process";
 import { TmuxSessionManager } from "./tmux.ts";
 import { ClaudeCodeExecutor } from "./claude.ts";
@@ -70,12 +70,11 @@ export class ClaudeDiscordBot {
       sessionStatus: { exists: false, uptime: "未開始" },
     };
 
-    // Initialize channel monitor
-    const monitoredChannels = config.monitorChannelId ? [config.monitorChannelId] : [];
+    // Initialize channel monitor (will be set up after bot is ready)
     this.channelMonitor = new ChannelMonitor(
       this.tmuxManager,
       this.logger,
-      monitoredChannels,
+      [], // Empty initially, will be configured after guild resolution
     );
 
     this.specialCommands = this.initializeSpecialCommands();
@@ -182,6 +181,7 @@ export class ClaudeDiscordBot {
     this.client.on("ready", async () => {
       this.logger.info(`Bot logged in as ${this.client.user?.tag}`);
       await this.resolveTargetChannel();
+      this.setupChannelMonitoring();
       await this.performStartupChecks();
       this.startResponseMonitor();
     });
@@ -276,6 +276,108 @@ export class ClaudeDiscordBot {
       );
       throw error;
     }
+  }
+
+  /**
+   * Setup channel monitoring based on configuration
+   */
+  private setupChannelMonitoring(): void {
+    if (!this.config.monitorChannelId) {
+      return; // No monitoring channel specified
+    }
+
+    try {
+      const guild = this.client.guilds.cache.get(this.config.guildId);
+      if (!guild) {
+        throw new Error(`Guild not found: ${this.config.guildId}`);
+      }
+
+      const monitorChannelId = this.resolveChannelIdentifier(
+        guild,
+        this.config.monitorChannelId,
+      );
+
+      if (monitorChannelId) {
+        this.channelMonitor.addChannel(monitorChannelId);
+        this.logger.info(`📡 Channel monitoring configured for: ${this.config.monitorChannelId}`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to setup channel monitoring: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      // Don't throw - allow bot to continue without monitoring
+    }
+  }
+
+  /**
+   * Resolve channel identifier (name or ID) to channel ID
+   */
+  private resolveChannelIdentifier(
+    guild: Guild,
+    identifier: string,
+  ): string | null {
+    // Check if it's already a valid channel ID (18-19 digits)
+    if (/^\d{17,19}$/.test(identifier)) {
+      const channel = guild.channels.cache.get(identifier);
+      if (channel && channel.isTextBased()) {
+        // Verify bot has required permissions
+        const permissions = channel.permissionsFor(this.client.user!);
+        if (!permissions?.has(["ViewChannel", "ReadMessageHistory"])) {
+          throw new Error(
+            `Missing permissions for channel ID ${identifier}. Required: View Channel, Read Message History`,
+          );
+        }
+        this.logger.info(`✅ Resolved channel ID: ${identifier}`);
+        return identifier;
+      } else {
+        throw new Error(`Channel ID ${identifier} not found or not a text channel`);
+      }
+    }
+
+    // Treat as channel name - search for it
+    this.logger.info(`🔍 Searching for channel name: "${identifier}"`);
+
+    const textChannels = guild.channels.cache.filter(
+      (ch) => ch.isTextBased() && ch.name.toLowerCase() === identifier.toLowerCase(),
+    );
+
+    if (textChannels.size === 0) {
+      throw new Error(
+        `Channel with name "${identifier}" not found. Available channels: ${
+          guild.channels.cache
+            .filter((ch) => ch.isTextBased())
+            .map((ch) => ch.name)
+            .join(", ")
+        }`,
+      );
+    }
+
+    if (textChannels.size > 1) {
+      const channelList = textChannels
+        .map((ch) => `#${ch.name} (${ch.id})`)
+        .join(", ");
+      throw new Error(
+        `Multiple channels found with name "${identifier}": ${channelList}. Please use channel ID instead.`,
+      );
+    }
+
+    const channel = textChannels.first();
+    if (!channel) {
+      throw new Error(`Failed to get channel from textChannels collection`);
+    }
+
+    // Verify bot has required permissions
+    const permissions = channel.permissionsFor(this.client.user!);
+    if (!permissions?.has(["ViewChannel", "ReadMessageHistory"])) {
+      throw new Error(
+        `Missing permissions for channel "#${identifier}". Required: View Channel, Read Message History`,
+      );
+    }
+
+    this.logger.info(`✅ Resolved channel name "${identifier}" to ID: ${channel.id}`);
+    return channel.id;
   }
 
   /**
